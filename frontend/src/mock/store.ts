@@ -363,3 +363,7 @@ export async function db_getServiceBreakdown(): Promise<{ service_type: string; 
   for (const s of servers) counts[s.service_type]++;
   return delay(Object.entries(counts).map(([service_type, count]) => ({ service_type, count })));
 }
+
+export function db_getTimelineClusters(): Promise<Cluster[]> {
+  return delay(getDB().clusters);
+}

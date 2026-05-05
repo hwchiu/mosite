@@ -1,4 +1,4 @@
-import type { Factory, Cluster, PurchaseBatch, Server, ServerDetail, AuditLog, DashboardSummary, FactoryBreakdown, ClusterUsage, ServerStatus, ClusterStatus } from '../types';
+import type { Factory, Cluster, PurchaseBatch, Server, ServerDetail, AuditLog, ClusterStatus } from '../types';
 import { SEED_FACTORIES, SEED_CLUSTERS, SEED_BATCHES, SEED_SERVERS } from './seed';
 
 const LS_KEY = 'mosite_mock_db_v2';
@@ -312,14 +312,7 @@ export async function db_deleteServer(id: string, operator: string, comment?: st
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-import type { DashboardSummary, FactoryBreakdown, ClusterUsage } from '../types';
-import type { ServerStatus } from '../types';
-
-const ALL_STATUSES: ServerStatus[] = ['purchased','waiting_infra','waiting_cluster_setup','waiting_platform','active','retired'];
-
-function zeroStatusCounts(): Record<ServerStatus, number> {
-  return Object.fromEntries(ALL_STATUSES.map(s => [s, 0])) as Record<ServerStatus, number>;
-}
+import type { DashboardSummary } from '../types';
 
 export async function db_getDashboardSummary(): Promise<DashboardSummary> {
   const db = getDB();
@@ -328,49 +321,6 @@ export async function db_getDashboardSummary(): Promise<DashboardSummary> {
     statuses.map(s => [s, db.clusters.filter(c => c.status === s).length])
   ) as Record<ClusterStatus, number>;
   return delay({ status_counts, total: db.clusters.length });
-}
-
-export async function db_getByFactory(): Promise<FactoryBreakdown[]> {
-  const db = getDB();
-  return delay(db.factories.map(f => {
-    const status_counts = zeroStatusCounts();
-    const factoryServers = db.servers.filter(s => s.factory_id === f.id);
-    for (const s of factoryServers) status_counts[s.status]++;
-    return { factory_id: f.id, factory_name: f.name, status_counts, total: factoryServers.length };
-  }));
-}
-
-export async function db_getByCluster(): Promise<ClusterUsage[]> {
-  const db = getDB();
-  return delay(db.clusters.map(c => {
-    const clusterServers = db.servers.filter(s => s.cluster_id === c.id);
-    const active = clusterServers.filter(s => s.status === 'active').length;
-    const available = clusterServers.filter(s => s.status !== 'active' && s.status !== 'retired').length;
-    const factory = db.factories.find(f => f.id === c.factory_id);
-    return {
-      cluster_id: c.id,
-      cluster_name: c.name,
-      cluster_type: c.type,
-      factory_name: factory?.name ?? '',
-      total_servers: clusterServers.length,
-      active_count: active,
-      available_count: available,
-    };
-  }));
-}
-
-export async function db_getModelBreakdown(): Promise<{ model: string; count: number }[]> {
-  const servers = getDB().servers;
-  const counts: Record<string, number> = { model_1: 0, model_2: 0, model_3: 0 };
-  for (const s of servers) counts[s.model]++;
-  return delay(Object.entries(counts).map(([model, count]) => ({ model, count })));
-}
-
-export async function db_getServiceBreakdown(): Promise<{ service_type: string; count: number }[]> {
-  const servers = getDB().servers;
-  const counts: Record<string, number> = { k8s: 0, vm: 0 };
-  for (const s of servers) counts[s.service_type]++;
-  return delay(Object.entries(counts).map(([service_type, count]) => ({ service_type, count })));
 }
 
 export function db_getTimelineClusters(): Promise<Cluster[]> {

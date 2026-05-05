@@ -9,11 +9,66 @@ export const SEED_FACTORIES: Factory[] = [
 ];
 
 export const SEED_CLUSTERS: Cluster[] = [
-  { id: 'c1', name: 'F1-K8S-Prod', type: 'k8s', factory_id: 'f1', factory_name: 'F1', description: 'F1 生產 Kubernetes 叢集', created_at: '2025-01-20T08:00:00Z' },
-  { id: 'c2', name: 'F1-VM-Infra', type: 'vm',  factory_id: 'f1', factory_name: 'F1', description: 'F1 基礎設施虛擬機', created_at: '2025-01-25T08:00:00Z' },
-  { id: 'c3', name: 'F2-K8S-Prod', type: 'k8s', factory_id: 'f2', factory_name: 'F2', description: 'F2 生產 Kubernetes 叢集', created_at: '2025-02-10T08:00:00Z' },
-  { id: 'c4', name: 'F3-K8S-Staging', type: 'k8s', factory_id: 'f3', factory_name: 'F3', description: 'F3 測試環境', created_at: '2025-03-20T08:00:00Z' },
-  { id: 'c5', name: 'F3-VM-Dev', type: 'vm', factory_id: 'f3', factory_name: 'F3', description: 'F3 開發用 VM 環境', created_at: '2025-03-22T08:00:00Z' },
+  {
+    id: 'c1', name: 'F1-K8S-Prod', type: 'k8s',
+    factory_id: 'f1', factory_name: 'F1',
+    description: 'F1 生產 Kubernetes 叢集', created_at: '2025-01-20T08:00:00Z',
+    phases: [
+      { phase: 'purchased',        completionWeek: '2025-W04', status: 'completed' },
+      { phase: 'waiting_infra',    completionWeek: '2025-W06', status: 'completed' },
+      { phase: 'waiting_build',    completionWeek: '2025-W10', status: 'completed' },
+      { phase: 'waiting_platform', completionWeek: '2025-W12', status: 'completed' },
+      { phase: 'active',           completionWeek: '2025-W14', status: 'completed' },
+    ],
+  },
+  {
+    id: 'c2', name: 'F1-VM-Infra', type: 'vm',
+    factory_id: 'f1', factory_name: 'F1',
+    description: 'F1 基礎設施虛擬機', created_at: '2025-01-25T08:00:00Z',
+    phases: [
+      { phase: 'purchased',        completionWeek: '2026-W16', status: 'completed' },
+      { phase: 'waiting_infra',    completionWeek: '2026-W16', status: 'completed' },
+      { phase: 'waiting_build',    completionWeek: '2026-W19', status: 'in_progress' },
+      { phase: 'waiting_platform', completionWeek: '2026-W22', status: 'estimated' },
+      { phase: 'active',           completionWeek: '2026-W24', status: 'estimated' },
+    ],
+  },
+  {
+    id: 'c3', name: 'F2-K8S-Prod', type: 'k8s',
+    factory_id: 'f2', factory_name: 'F2',
+    description: 'F2 生產 Kubernetes 叢集', created_at: '2025-02-10T08:00:00Z',
+    phases: [
+      { phase: 'purchased',     completionWeek: '2026-W14', status: 'completed' },
+      { phase: 'waiting_infra', completionWeek: '2026-W17', status: 'completed' },
+      { phase: 'waiting_build', completionWeek: '2026-W23', status: 'blocked', note: '機器延遲到貨，預計 W23 恢復' },
+      { phase: 'waiting_platform', completionWeek: '2026-W25', status: 'estimated' },
+      { phase: 'active',           completionWeek: '2026-W27', status: 'estimated' },
+    ],
+  },
+  {
+    id: 'c4', name: 'F3-K8S-Staging', type: 'k8s',
+    factory_id: 'f3', factory_name: 'F3',
+    description: 'F3 測試環境', created_at: '2025-03-20T08:00:00Z',
+    phases: [
+      { phase: 'purchased',        completionWeek: '2026-W10', status: 'completed' },
+      { phase: 'waiting_infra',    completionWeek: '2026-W12', status: 'completed' },
+      { phase: 'waiting_build',    completionWeek: '2026-W15', status: 'completed' },
+      { phase: 'waiting_platform', completionWeek: '2026-W18', status: 'completed' },
+      { phase: 'active',           completionWeek: '2026-W18', status: 'completed' },
+    ],
+  },
+  {
+    id: 'c5', name: 'F3-VM-Dev', type: 'vm',
+    factory_id: 'f3', factory_name: 'F3',
+    description: 'F3 開發用 VM 環境', created_at: '2025-03-22T08:00:00Z',
+    phases: [
+      { phase: 'purchased',        completionWeek: '2026-W18', status: 'completed' },
+      { phase: 'waiting_infra',    completionWeek: '2026-W20', status: 'in_progress' },
+      { phase: 'waiting_build',    completionWeek: '2026-W23', status: 'estimated' },
+      { phase: 'waiting_platform', completionWeek: '2026-W25', status: 'estimated' },
+      { phase: 'active',           completionWeek: '2026-W27', status: 'estimated' },
+    ],
+  },
 ];
 
 export const SEED_BATCHES: PurchaseBatch[] = [

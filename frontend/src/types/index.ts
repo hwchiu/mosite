@@ -6,13 +6,9 @@ export type ServerStatus =
   | 'active'
   | 'retired';
 
-export type PhaseKey =
-  | 'purchased'
-  | 'waiting_infra'
-  | 'waiting_build'
-  | 'waiting_platform'
-  | 'active'
-  | 'retired';
+export type ClusterStatus = 'PO' | 'server_movein' | 'infra' | 'cpld' | 'sipd';
+
+export type PhaseKey = ClusterStatus;
 
 export type PhaseStatus = 'completed' | 'in_progress' | 'blocked' | 'estimated';
 
@@ -40,6 +36,7 @@ export interface Cluster {
   factory_id: string;
   factory_name?: string;
   description?: string;
+  status?: ClusterStatus;
   created_at: string;
   serverCount?: number;
   phases?: ClusterPhase[];
@@ -91,7 +88,7 @@ export interface ServerDetail extends Server {
 }
 
 export interface DashboardSummary {
-  status_counts: Record<ServerStatus, number>;
+  status_counts: Record<ClusterStatus, number>;
   total: number;
 }
 

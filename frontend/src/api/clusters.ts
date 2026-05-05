@@ -1,5 +1,5 @@
-import client from './client';
 import type { Cluster, ClusterType } from '../types';
+import { db_listClusters, db_createCluster, db_getCluster, db_updateCluster, db_deleteCluster } from '../mock/store';
 
 export interface ClusterListParams {
   factory_id?: string;
@@ -14,25 +14,21 @@ export interface CreateClusterData {
 }
 
 export async function listClusters(params?: ClusterListParams): Promise<Cluster[]> {
-  const { data } = await client.get<Cluster[]>('/clusters', { params });
-  return data;
+  return db_listClusters(params?.factory_id, params?.type);
 }
 
 export async function createCluster(data: CreateClusterData): Promise<Cluster> {
-  const { data: resp } = await client.post<Cluster>('/clusters', data);
-  return resp;
+  return db_createCluster(data);
 }
 
 export async function getCluster(id: string): Promise<Cluster> {
-  const { data } = await client.get<Cluster>(`/clusters/${id}`);
-  return data;
+  return db_getCluster(id);
 }
 
 export async function updateCluster(id: string, data: Partial<CreateClusterData>): Promise<Cluster> {
-  const { data: resp } = await client.put<Cluster>(`/clusters/${id}`, data);
-  return resp;
+  return db_updateCluster(id, data);
 }
 
 export async function deleteCluster(id: string): Promise<void> {
-  await client.delete(`/clusters/${id}`);
+  return db_deleteCluster(id);
 }

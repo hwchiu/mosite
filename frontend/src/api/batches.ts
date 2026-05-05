@@ -1,5 +1,5 @@
-import client from './client';
 import type { PurchaseBatch } from '../types';
+import { db_listBatches, db_createBatch, db_getBatch, db_updateBatch } from '../mock/store';
 
 export interface BatchListParams {
   factory_id?: string;
@@ -13,21 +13,17 @@ export interface CreateBatchData {
 }
 
 export async function listBatches(params?: BatchListParams): Promise<PurchaseBatch[]> {
-  const { data } = await client.get<PurchaseBatch[]>('/batches', { params });
-  return data;
+  return db_listBatches(params?.factory_id);
 }
 
 export async function createBatch(data: CreateBatchData): Promise<PurchaseBatch> {
-  const { data: resp } = await client.post<PurchaseBatch>('/batches', data);
-  return resp;
+  return db_createBatch(data);
 }
 
 export async function getBatch(id: string): Promise<PurchaseBatch> {
-  const { data } = await client.get<PurchaseBatch>(`/batches/${id}`);
-  return data;
+  return db_getBatch(id);
 }
 
 export async function updateBatch(id: string, data: Partial<CreateBatchData>): Promise<PurchaseBatch> {
-  const { data: resp } = await client.put<PurchaseBatch>(`/batches/${id}`, data);
-  return resp;
+  return db_updateBatch(id, data);
 }

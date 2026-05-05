@@ -6,6 +6,8 @@ import ServerList from './pages/ServerList';
 import ServerDetail from './pages/ServerDetail';
 import Clusters from './pages/Clusters';
 import Batches from './pages/Batches';
+import FactoryOverview from './pages/FactoryOverview';
+import Settings from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +29,8 @@ export default function App() {
             <Route path="/servers/:id" element={<ServerDetail />} />
             <Route path="/clusters" element={<Clusters />} />
             <Route path="/batches" element={<Batches />} />
+            <Route path="/factory-overview" element={<FactoryOverview />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>

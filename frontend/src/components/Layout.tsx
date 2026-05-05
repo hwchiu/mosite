@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Server, Network, Package } from 'lucide-react';
+import { LayoutDashboard, Server, Network, Package, Building2, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/factory-overview', label: '廠區總覽', icon: Building2, end: false },
   { to: '/servers', label: 'Servers', icon: Server, end: false },
   { to: '/clusters', label: 'Clusters', icon: Network, end: false },
-  { to: '/batches', label: 'Batches', icon: Package, end: false },
+  { to: '/batches', label: '採購批次', icon: Package, end: false },
 ];
 
 export default function Layout() {
@@ -38,6 +39,22 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+        {/* Settings link pinned at bottom */}
+        <div className="px-3 pb-3">
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              }`
+            }
+          >
+            <Settings size={18} />
+            系統設定
+          </NavLink>
+        </div>
         <div className="px-6 py-4 border-t border-gray-700">
           <p className="text-xs text-gray-500">v1.0.0</p>
         </div>

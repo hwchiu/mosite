@@ -1,47 +1,39 @@
-import client from './client';
 import type { Server, ServerDetail, ServerStatus } from '../types';
+import {
+  db_listServers, db_createServer, db_bulkCreateServers,
+  db_getServer, db_updateServer, db_transitionStatus, db_deleteServer,
+} from '../mock/store';
+import type { ServerListParams } from '../mock/store';
 
-export interface ServerListParams {
-  factory_id?: string;
-  status?: string;
-  model?: string;
-  service_type?: string;
-  search?: string;
-}
+export type { ServerListParams };
 
 export async function listServers(params?: ServerListParams): Promise<Server[]> {
-  const { data } = await client.get<Server[]>('/servers', { params });
-  return data;
+  return db_listServers(params);
 }
 
 export async function createServer(data: Partial<Server>): Promise<Server> {
-  const { data: resp } = await client.post<Server>('/servers', data);
-  return resp;
+  return db_createServer(data as Parameters<typeof db_createServer>[0]);
 }
 
 export async function bulkCreateServers(data: Partial<Server>[]): Promise<Server[]> {
-  const { data: resp } = await client.post<Server[]>('/servers/bulk', data);
-  return resp;
+  return db_bulkCreateServers(data as Parameters<typeof db_bulkCreateServers>[0]);
 }
 
 export async function getServer(id: string): Promise<ServerDetail> {
-  const { data } = await client.get<ServerDetail>(`/servers/${id}`);
-  return data;
+  return db_getServer(id);
 }
 
-export async function updateServer(id: string, data: Partial<Server>): Promise<Server> {
-  const { data: resp } = await client.put<Server>(`/servers/${id}`, data);
-  return resp;
+export async function updateServer(id: string, data: Partial<Server> & { operator?: string; comment?: string }): Promise<Server> {
+  return db_updateServer(id, data);
 }
 
-export async function deleteServer(id: string): Promise<void> {
-  await client.delete(`/servers/${id}`);
+export async function deleteServer(id: string, operator = 'system', comment?: string): Promise<void> {
+  return db_deleteServer(id, operator, comment);
 }
 
 export async function transitionStatus(
   id: string,
   data: { status: ServerStatus; operator: string; comment?: string }
 ): Promise<Server> {
-  const { data: resp } = await client.post<Server>(`/servers/${id}/transition`, data);
-  return resp;
+  return db_transitionStatus(id, data.status, data.operator, data.comment);
 }

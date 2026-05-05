@@ -1,27 +1,28 @@
-import client from './client';
 import type { DashboardSummary, FactoryBreakdown, ClusterUsage } from '../types';
+import {
+  db_getDashboardSummary,
+  db_getByFactory,
+  db_getByCluster,
+  db_getModelBreakdown,
+  db_getServiceBreakdown,
+} from '../mock/store';
 
 export async function getSummary(): Promise<DashboardSummary> {
-  const { data } = await client.get<DashboardSummary>('/dashboard/summary');
-  return data;
+  return db_getDashboardSummary();
 }
 
 export async function getByFactory(): Promise<FactoryBreakdown[]> {
-  const { data } = await client.get<FactoryBreakdown[]>('/dashboard/by-factory');
-  return data;
+  return db_getByFactory();
 }
 
 export async function getByCluster(): Promise<ClusterUsage[]> {
-  const { data } = await client.get<ClusterUsage[]>('/dashboard/by-cluster');
-  return data;
+  return db_getByCluster();
 }
 
 export async function getModelBreakdown(): Promise<{ model: string; count: number }[]> {
-  const { data } = await client.get<{ model: string; count: number }[]>('/dashboard/model-breakdown');
-  return data;
+  return db_getModelBreakdown();
 }
 
 export async function getServiceBreakdown(): Promise<{ service_type: string; count: number }[]> {
-  const { data } = await client.get<{ service_type: string; count: number }[]>('/dashboard/service-breakdown');
-  return data;
+  return db_getServiceBreakdown();
 }

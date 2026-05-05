@@ -1,4 +1,4 @@
-import type { Cluster, ClusterType } from '../types';
+import type { Cluster, ClusterType, ClusterStatus } from '../types';
 import { db_listClusters, db_createCluster, db_getCluster, db_updateCluster, db_deleteCluster } from '../mock/store';
 
 export interface ClusterListParams {
@@ -10,6 +10,7 @@ export interface CreateClusterData {
   name: string;
   type: ClusterType;
   factory_id: string;
+  status?: ClusterStatus;
   description?: string;
 }
 
@@ -25,7 +26,10 @@ export async function getCluster(id: string): Promise<Cluster> {
   return db_getCluster(id);
 }
 
-export async function updateCluster(id: string, data: Partial<CreateClusterData>): Promise<Cluster> {
+export async function updateCluster(
+  id: string, 
+  data: Partial<Pick<Cluster, 'name' | 'description' | 'status' | 'factory_id' | 'type'>>
+): Promise<Cluster> {
   return db_updateCluster(id, data);
 }
 

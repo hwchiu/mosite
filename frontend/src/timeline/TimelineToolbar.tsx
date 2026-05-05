@@ -8,29 +8,29 @@ interface Props {
 
 export default function TimelineToolbar({ mode, onModeChange, onPrev, onNext, onToday }: Props) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-[#1e1e2e] border-b border-[#313244] flex-shrink-0">
-      <span className="text-[#cba6f7] font-bold text-[13px]">📅 Timeline</span>
+    <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-200 flex-shrink-0">
+      <span className="text-indigo-600 font-bold text-[13px]">📅 Timeline</span>
       <div className="flex-1" />
       <button onClick={onPrev}
-        className="bg-[#313244] text-[#cdd6f4] px-2.5 py-1 rounded text-[11px] hover:bg-[#45475a]">
+        className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded text-[11px] hover:bg-gray-200">
         {mode === 'week' ? '◀ 上3週' : '◀'}
       </button>
       <button onClick={onToday}
-        className="bg-[#cba6f720] border border-[#cba6f7] text-[#cba6f7] px-2.5 py-1 rounded text-[11px]">
+        className="bg-indigo-50 border border-indigo-600 text-indigo-600 px-2.5 py-1 rounded text-[11px] hover:bg-indigo-100">
         {mode === 'week' ? '回今天' : '今年'}
       </button>
       <button onClick={onNext}
-        className="bg-[#313244] text-[#cdd6f4] px-2.5 py-1 rounded text-[11px] hover:bg-[#45475a]">
+        className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded text-[11px] hover:bg-gray-200">
         {mode === 'week' ? '下3週 ▶' : '▶'}
       </button>
       <div className="w-3" />
-      <div className="flex bg-[#313244] rounded overflow-hidden">
+      <div className="flex bg-gray-100 rounded overflow-hidden">
         {(['week', 'month'] as const).map(m => (
           <button
             key={m}
             onClick={() => onModeChange(m)}
             className={`px-3 py-1 text-[11px] border-none cursor-pointer ${
-              mode === m ? 'bg-[#cba6f7] text-[#1e1e2e] font-bold' : 'bg-transparent text-[#6c7086]'
+              mode === m ? 'bg-indigo-600 text-white font-bold' : 'bg-transparent text-gray-600'
             }`}
           >
             {m === 'week' ? '週' : '月'}

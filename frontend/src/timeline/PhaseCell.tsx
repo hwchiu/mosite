@@ -2,12 +2,11 @@ import type { PhaseKey } from '../types';
 import type { ResolvedPhaseCell } from './utils';
 
 const PHASE_COLORS: Record<PhaseKey, string> = {
-  purchased:        '#6c7086',
-  waiting_infra:    '#fab387',
-  waiting_build:    '#89b4fa',
-  waiting_platform: '#cba6f7',
-  active:           '#a6e3a1',
-  retired:          '#45475a',
+  PO:            '#94a3b8',  // slate-400
+  server_movein: '#f59e0b',  // amber-500
+  infra:         '#6366f1',  // indigo-500
+  cpld:          '#8b5cf6',  // violet-500
+  sipd:          '#10b981',  // emerald-500
 };
 
 function buildGradient(phases: PhaseKey[]): string {
@@ -30,7 +29,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
     return (
       <div
         className="h-5 rounded-sm"
-        style={{ background: isNowColumn ? 'rgba(203,166,247,0.05)' : 'transparent' }}
+        style={{ background: isNowColumn ? 'rgba(99,102,241,0.06)' : 'transparent' }}
       />
     );
   }
@@ -40,9 +39,9 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
       <div
         className="h-5 rounded-sm"
         style={{
-          background: '#f38ba840',
-          border: '2px dashed #f38ba8',
-          outline: cell.isCurrentPhase ? '2px solid #cba6f7' : undefined,
+          background: 'rgba(239,68,68,0.12)',
+          border: '2px dashed #ef4444',
+          outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,
           outlineOffset: '-1px',
         }}
         title="BLOCKED"
@@ -58,7 +57,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
         style={{
           background: 'transparent',
           border: `1px dashed ${color}`,
-          outline: cell.isCurrentPhase ? '2px solid #cba6f7' : undefined,
+          outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,
           outlineOffset: '-1px',
         }}
       />
@@ -70,7 +69,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
       className="h-5 rounded-sm"
       style={{
         background: buildGradient(cell.phases),
-        outline: cell.isCurrentPhase ? '2px solid #cba6f7' : undefined,
+        outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,
         outlineOffset: '-1px',
         boxSizing: 'border-box',
       }}

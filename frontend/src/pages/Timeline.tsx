@@ -17,29 +17,29 @@ import type { Factory } from '../types';
 // Legend bar at bottom
 function Legend() {
   const items = [
-    { label: '採購完畢', color: '#6c7086' },
-    { label: '等待Infra', color: '#fab387' },
-    { label: 'Cluster Build', color: '#89b4fa' },
-    { label: '等待Platform', color: '#cba6f7' },
-    { label: 'Active', color: '#a6e3a1' },
+    { label: 'PO', color: '#94a3b8' },
+    { label: 'Server Move-In', color: '#f59e0b' },
+    { label: 'Infra', color: '#6366f1' },
+    { label: 'CPLD', color: '#8b5cf6' },
+    { label: 'SIPD', color: '#10b981' },
   ];
   return (
-    <div className="flex gap-3 px-3 py-1.5 bg-[#1e1e2e] border-t border-[#313244] flex-wrap flex-shrink-0">
+    <div className="flex gap-3 px-3 py-1.5 bg-white border-t border-gray-200 flex-wrap flex-shrink-0">
       {items.map(item => (
         <div key={item.label} className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: item.color }} />
-          <span className="text-[10px] text-[#6c7086]">{item.label}</span>
+          <span className="text-[10px] text-gray-500">{item.label}</span>
         </div>
       ))}
       <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm border border-dashed border-[#6c7086]" />
-        <span className="text-[10px] text-[#6c7086]">預估</span>
+        <span className="w-3 h-3 rounded-sm border border-dashed border-gray-400" />
+        <span className="text-[10px] text-gray-500">預估</span>
       </div>
       <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm" style={{ background: '#f38ba840', border: '2px dashed #f38ba8' }} />
-        <span className="text-[10px] text-[#6c7086]">BLOCKED</span>
+        <span className="w-3 h-3 rounded-sm" style={{ background: 'rgba(239,68,68,0.12)', border: '2px dashed #ef4444' }} />
+        <span className="text-[10px] text-gray-500">BLOCKED</span>
       </div>
-      <span className="ml-auto text-[10px] text-[#45475a]">紫色外框 = 當前 Phase</span>
+      <span className="ml-auto text-[10px] text-gray-400">藍色外框 = 當前 Phase</span>
     </div>
   );
 }
@@ -111,7 +111,7 @@ export default function Timeline() {
   }
 
   if (isLoading) {
-    return <div className="flex-1 flex items-center justify-center text-[#6c7086]">Loading...</div>;
+    return <div className="flex-1 flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
   return (

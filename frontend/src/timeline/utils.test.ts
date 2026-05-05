@@ -78,9 +78,9 @@ describe('compareColumns', () => {
 
 describe('resolveClusterCells', () => {
   const phases: ClusterPhase[] = [
-    { phase: 'purchased',     completionWeek: '2026-W17', status: 'completed' },
-    { phase: 'waiting_infra', completionWeek: '2026-W19', status: 'in_progress' },
-    { phase: 'waiting_build', completionWeek: '2026-W22', status: 'estimated' },
+    { phase: 'PO',           completionWeek: '2026-W17', status: 'completed' },
+    { phase: 'server_movein',completionWeek: '2026-W19', status: 'in_progress' },
+    { phase: 'infra',        completionWeek: '2026-W22', status: 'estimated' },
   ];
 
   it('returns one cell per column', () => {
@@ -92,14 +92,14 @@ describe('resolveClusterCells', () => {
   it('marks the cell of completion week with that phase', () => {
     const cols = ['2026-W17', '2026-W18', '2026-W19', '2026-W20'];
     const cells = resolveClusterCells(phases, cols, 'week');
-    // W17 = purchased completion
-    expect(cells[0].phases).toContain('purchased');
-    // W18 = span of waiting_infra (W17 < W18 <= W19)
-    expect(cells[1].phases).toContain('waiting_infra');
-    // W19 = waiting_infra completion
-    expect(cells[2].phases).toContain('waiting_infra');
-    // W20 = span of waiting_build (W19 < W20 <= W22)
-    expect(cells[3].phases).toContain('waiting_build');
+    // W17 = PO completion
+    expect(cells[0].phases).toContain('PO');
+    // W18 = span of server_movein (W17 < W18 <= W19)
+    expect(cells[1].phases).toContain('server_movein');
+    // W19 = server_movein completion
+    expect(cells[2].phases).toContain('server_movein');
+    // W20 = span of infra (W19 < W20 <= W22)
+    expect(cells[3].phases).toContain('infra');
   });
 
   it('detects current in-progress phase', () => {
@@ -116,31 +116,31 @@ describe('resolveClusterCells', () => {
 
   it('handles same-week multi-phase (B1 gradient scenario)', () => {
     const samePhasesWeek: ClusterPhase[] = [
-      { phase: 'purchased',     completionWeek: '2026-W16', status: 'completed' },
-      { phase: 'waiting_infra', completionWeek: '2026-W16', status: 'completed' },
-      { phase: 'waiting_build', completionWeek: '2026-W19', status: 'in_progress' },
+      { phase: 'PO',           completionWeek: '2026-W16', status: 'completed' },
+      { phase: 'server_movein',completionWeek: '2026-W16', status: 'completed' },
+      { phase: 'infra',        completionWeek: '2026-W19', status: 'in_progress' },
     ];
     const cols = ['2026-W16'];
     const cells = resolveClusterCells(samePhasesWeek, cols, 'week');
-    expect(cells[0].phases).toEqual(['purchased', 'waiting_infra']);
+    expect(cells[0].phases).toEqual(['PO', 'server_movein']);
   });
 
   it('maps weeks to months in month mode', () => {
     // W17 is April 2026; W19 is May 2026.
-    // In May column only waiting_infra (W19) should appear;
-    // purchased (W17=April) lands in '2026-04', not '2026-05'.
+    // In May column only server_movein (W19) should appear;
+    // PO (W17=April) lands in '2026-04', not '2026-05'.
     const cols = ['2026-04', '2026-05'];
     const cells = resolveClusterCells(phases, cols, 'month');
-    expect(cells[0].phases).toContain('purchased');   // W17 → April
-    expect(cells[0].phases).not.toContain('waiting_infra');
-    expect(cells[1].phases).toContain('waiting_infra'); // W19 → May
-    expect(cells[1].phases).not.toContain('purchased');
+    expect(cells[0].phases).toContain('PO');   // W17 → April
+    expect(cells[0].phases).not.toContain('server_movein');
+    expect(cells[1].phases).toContain('server_movein'); // W19 → May
+    expect(cells[1].phases).not.toContain('PO');
   });
 
   it('uses blocked status for blocked phases', () => {
     const blockedPhases: ClusterPhase[] = [
-      { phase: 'purchased',     completionWeek: '2026-W17', status: 'completed' },
-      { phase: 'waiting_infra', completionWeek: '2026-W20', status: 'blocked' },
+      { phase: 'PO',           completionWeek: '2026-W17', status: 'completed' },
+      { phase: 'server_movein',completionWeek: '2026-W20', status: 'blocked' },
     ];
     const cols = ['2026-W18', '2026-W19', '2026-W20'];
     const cells = resolveClusterCells(blockedPhases, cols, 'week');

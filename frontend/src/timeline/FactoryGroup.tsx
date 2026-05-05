@@ -31,31 +31,34 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
   }, {} as Record<string, number>);
 
   const PHASE_EMOJI: Record<string, string> = {
-    purchased: '🛒', waiting_infra: '⚙️', waiting_build: '🔨',
-    waiting_platform: '🚀', active: '🟢', retired: '⬛',
+    PO: '🛒',
+    server_movein: '📦',
+    infra: '⚙️',
+    cpld: '🔧',
+    sipd: '🟢',
   };
 
   return (
-    <div className="border-b border-[#313244]">
+    <div className="border-b border-gray-200">
       {/* Factory header */}
       <div
-        className="grid items-center bg-[#181825] cursor-pointer hover:bg-[#1e1e2e] sticky top-[33px] z-[5]"
+        className="grid items-center bg-gray-50 cursor-pointer hover:bg-gray-100 sticky top-[33px] z-[5]"
         style={{ gridTemplateColumns: '180px 1fr' }}
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex items-center gap-1.5 px-2 py-1.5">
-          <span className="text-[10px] text-[#6c7086] transition-transform duration-200"
+          <span className="text-[10px] text-gray-400 transition-transform duration-200"
             style={{ display: 'inline-block', transform: expanded ? 'rotate(0)' : 'rotate(-90deg)' }}>
             ▼
           </span>
           <span className="font-bold text-[12px]" style={{ color }}>{factory.name} 廠區</span>
-          <span className="text-[9px] text-[#6c7086] bg-[#313244] px-1.5 rounded-full">{clusters.length} clusters</span>
-          {hasBlocked && <span className="text-[10px] text-[#f38ba8]">⚠ BLOCKED</span>}
+          <span className="text-[9px] text-gray-500 bg-gray-200 px-1.5 rounded-full">{clusters.length} clusters</span>
+          {hasBlocked && <span className="text-[10px] text-red-500">⚠ BLOCKED</span>}
         </div>
         <div className="flex gap-2 px-2 flex-wrap">
           {Object.entries(phaseSummary).map(([phase, count]) => (
-            <span key={phase} className="text-[9px] text-[#6c7086]">
-              {PHASE_EMOJI[phase] ?? '•'} {phase.replace('waiting_', '').replace('_', ' ')}×{count}
+            <span key={phase} className="text-[9px] text-gray-500">
+              {PHASE_EMOJI[phase] ?? '•'} {phase.replace('server_movein', 'Server Move-In')}×{count}
             </span>
           ))}
         </div>

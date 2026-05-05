@@ -1,275 +1,107 @@
 import { useQuery } from '@tanstack/react-query';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts';
-import { Server, Activity, Package, Cpu, CheckCircle, Archive } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { getSummary, getByFactory, getByCluster, getModelBreakdown, getServiceBreakdown } from '../api/dashboard';
-import type { ServerStatus } from '../types';
+import { getSummary } from '../api/dashboard';
+import { listClusters } from '../api/clusters';
+import type { ClusterStatus } from '../types';
 
-const STATUS_ALL: ServerStatus[] = [
-  'purchased',
-  'waiting_infra',
-  'waiting_cluster_setup',
-  'waiting_platform',
-  'active',
-  'retired',
-];
-
-const statusCardConfig: Record<
-  ServerStatus,
-  { label: string; bgClass: string; textClass: string; borderClass: string; icon: React.ElementType }
-> = {
-  purchased: {
-    label: 'Purchased',
-    bgClass: 'bg-gray-50',
-    textClass: 'text-gray-700',
-    borderClass: 'border-gray-200',
-    icon: Package,
-  },
-  waiting_infra: {
-    label: 'Waiting Infra',
-    bgClass: 'bg-yellow-50',
-    textClass: 'text-yellow-700',
-    borderClass: 'border-yellow-200',
-    icon: Activity,
-  },
-  waiting_cluster_setup: {
-    label: 'Waiting Cluster',
-    bgClass: 'bg-orange-50',
-    textClass: 'text-orange-700',
-    borderClass: 'border-orange-200',
-    icon: Cpu,
-  },
-  waiting_platform: {
-    label: 'Waiting Platform',
-    bgClass: 'bg-blue-50',
-    textClass: 'text-blue-700',
-    borderClass: 'border-blue-200',
-    icon: Server,
-  },
-  active: {
-    label: 'Active',
-    bgClass: 'bg-green-50',
-    textClass: 'text-green-700',
-    borderClass: 'border-green-200',
-    icon: CheckCircle,
-  },
-  retired: {
-    label: 'Retired',
-    bgClass: 'bg-red-50',
-    textClass: 'text-red-700',
-    borderClass: 'border-red-200',
-    icon: Archive,
-  },
+const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
+  PO:           { label: 'PO',            bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
+  server_movein:{ label: 'Server Move-In', bg: 'bg-amber-50',  text: 'text-amber-700',   border: 'border-amber-200',   dotColor: '#f59e0b' },
+  infra:        { label: 'Infra',         bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dotColor: '#6366f1' },
+  cpld:         { label: 'CPLD',          bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dotColor: '#8b5cf6' },
+  sipd:         { label: 'SIPD',          bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
 };
 
-const PIE_COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#10b981'];
+const CLUSTER_STATUSES: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
 
 export default function Dashboard() {
   const summaryQ = useQuery({ queryKey: ['dashboard-summary'], queryFn: getSummary });
-  const factoryQ = useQuery({ queryKey: ['factory-breakdown'], queryFn: getByFactory });
-  const clusterQ = useQuery({ queryKey: ['cluster-usage'], queryFn: getByCluster });
-  const modelQ = useQuery({ queryKey: ['model-breakdown'], queryFn: getModelBreakdown });
-  const serviceQ = useQuery({ queryKey: ['service-breakdown'], queryFn: getServiceBreakdown });
-
+  const clustersQ = useQuery({ queryKey: ['clusters'], queryFn: () => listClusters() });
+  
+  if (summaryQ.isLoading || clustersQ.isLoading) return <LoadingSpinner />;
+  
+  const summary = summaryQ.data;
+  const clusters = clustersQ.data ?? [];
+  
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-
-      {/* Status Summary Cards */}
-      <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          Server Status Overview
-        </h2>
-        {summaryQ.isLoading ? (
-          <LoadingSpinner />
-        ) : summaryQ.isError ? (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
-            Failed to load summary data.
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {STATUS_ALL.map((status) => {
-              const cfg = statusCardConfig[status];
-              const Icon = cfg.icon;
-              const count = summaryQ.data?.status_counts?.[status] ?? 0;
-              return (
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">共 {summary?.total ?? 0} 個 Cluster</p>
+      </div>
+      
+      {/* 5 status cards */}
+      <div className="grid grid-cols-5 gap-4">
+        {CLUSTER_STATUSES.map(status => {
+          const config = STATUS_CONFIG[status];
+          const count = summary?.status_counts[status] ?? 0;
+          return (
+            <div
+              key={status}
+              className={`${config.bg} ${config.border} border rounded-xl p-4 shadow-sm`}
+            >
+              <div className="flex items-center gap-2 mb-2">
                 <div
-                  key={status}
-                  className={`rounded-xl border p-4 ${cfg.bgClass} ${cfg.borderClass} flex flex-col gap-2`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-medium ${cfg.textClass}`}>{cfg.label}</span>
-                    <Icon size={16} className={cfg.textClass} />
-                  </div>
-                  <span className={`text-3xl font-bold ${cfg.textClass}`}>{count}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Model Breakdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Servers by Model</h2>
-          {modelQ.isLoading ? (
-            <LoadingSpinner />
-          ) : modelQ.isError ? (
-            <p className="text-red-500 text-sm">Failed to load model data.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={modelQ.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="model" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Service Type Breakdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Servers by Service Type</h2>
-          {serviceQ.isLoading ? (
-            <LoadingSpinner />
-          ) : serviceQ.isError ? (
-            <p className="text-red-500 text-sm">Failed to load service data.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={serviceQ.data}
-                  dataKey="count"
-                  nameKey="service_type"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                >
-                  {serviceQ.data?.map((_, idx) => (
-                    <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Legend />
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: config.dotColor }}
+                />
+                <span className="text-xs font-medium text-gray-600">{config.label}</span>
+              </div>
+              <div className={`text-3xl font-bold ${config.text}`}>{count}</div>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Factory Breakdown Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      
+      {/* Recent clusters table */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">Factory Breakdown</h2>
+          <h2 className="font-semibold text-gray-800">所有 Clusters</h2>
         </div>
-        {factoryQ.isLoading ? (
-          <LoadingSpinner />
-        ) : factoryQ.isError ? (
-          <p className="p-5 text-red-500 text-sm">Failed to load factory data.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Factory</th>
-                  {STATUS_ALL.map((s) => (
-                    <th key={s} className="px-4 py-3 text-center font-semibold text-gray-600">
-                      {statusCardConfig[s].label}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {factoryQ.data?.map((row) => (
-                  <tr key={row.factory_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-800">{row.factory_name}</td>
-                    {STATUS_ALL.map((s) => (
-                      <td key={s} className="px-4 py-3 text-center text-gray-600">
-                        {row.status_counts?.[s] ?? 0}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Factory</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {clusters
+                .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
+                .map(cluster => {
+                  const status = cluster.status ?? 'PO';
+                  const config = STATUS_CONFIG[status];
+                  return (
+                    <tr key={cluster.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-900">{cluster.factory_name}</span>
                       </td>
-                    ))}
-                    <td className="px-4 py-3 text-center font-semibold text-gray-800">{row.total}</td>
-                  </tr>
-                ))}
-                {!factoryQ.data?.length && (
-                  <tr>
-                    <td colSpan={STATUS_ALL.length + 2} className="px-4 py-6 text-center text-gray-400">
-                      No factory data available.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Cluster Usage Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">Cluster Usage</h2>
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        <span className="text-sm text-gray-700">{cluster.name}</span>
+                      </td>
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        <span className="text-xs font-medium text-gray-500 uppercase">{cluster.type}</span>
+                      </td>
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${config.bg} ${config.text} ${config.border} border`}
+                        >
+                          <div
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: config.dotColor }}
+                          />
+                          {config.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
         </div>
-        {clusterQ.isLoading ? (
-          <LoadingSpinner />
-        ) : clusterQ.isError ? (
-          <p className="p-5 text-red-500 text-sm">Failed to load cluster data.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Cluster</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Type</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Factory</th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">Total</th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">Active</th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">Available</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {clusterQ.data?.map((row) => (
-                  <tr key={row.cluster_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-800">{row.cluster_name}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 ring-1 ring-inset ring-indigo-300">
-                        {row.cluster_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{row.factory_name}</td>
-                    <td className="px-4 py-3 text-center text-gray-700">{row.total_servers}</td>
-                    <td className="px-4 py-3 text-center text-green-700 font-medium">{row.active_count}</td>
-                    <td className="px-4 py-3 text-center text-blue-700 font-medium">{row.available_count}</td>
-                  </tr>
-                ))}
-                {!clusterQ.data?.length && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
-                      No cluster data available.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

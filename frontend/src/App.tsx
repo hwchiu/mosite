@@ -1,0 +1,35 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import ServerList from './pages/ServerList';
+import ServerDetail from './pages/ServerDetail';
+import Clusters from './pages/Clusters';
+import Batches from './pages/Batches';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+    },
+  },
+});
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/servers" element={<ServerList />} />
+            <Route path="/servers/:id" element={<ServerDetail />} />
+            <Route path="/clusters" element={<Clusters />} />
+            <Route path="/batches" element={<Batches />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}

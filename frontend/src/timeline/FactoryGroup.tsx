@@ -2,8 +2,6 @@ import { useState } from 'react';
 import ClusterRow from './ClusterRow';
 import type { Cluster, Factory } from '../types';
 
-const FACTORY_COLORS = ['#f38ba8','#fab387','#f9e2af','#a6e3a1','#89dceb','#89b4fa','#cba6f7'];
-
 interface Props {
   factory: Factory;
   clusters: Cluster[];
@@ -15,9 +13,6 @@ interface Props {
 
 export default function FactoryGroup({ factory, clusters, columns, mode, nowColumn, defaultExpanded = true }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-
-  const colorIndex = parseInt(factory.id.replace(/\D/g, ''), 10) % FACTORY_COLORS.length;
-  const color = FACTORY_COLORS[colorIndex];
 
   const hasBlocked = clusters.some(c =>
     c.phases?.some(p => p.status === 'blocked')
@@ -51,7 +46,7 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
             style={{ display: 'inline-block', transform: expanded ? 'rotate(0)' : 'rotate(-90deg)' }}>
             ▼
           </span>
-          <span className="font-bold text-[12px]" style={{ color }}>{factory.name} 廠區</span>
+          <span className="font-bold text-[12px] text-gray-800">{factory.name} 廠區</span>
           <span className="text-[9px] text-gray-500 bg-gray-200 px-1.5 rounded-full">{clusters.length} clusters</span>
           {hasBlocked && <span className="text-[10px] text-red-500">⚠ BLOCKED</span>}
         </div>

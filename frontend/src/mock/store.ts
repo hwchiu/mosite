@@ -1,7 +1,7 @@
-import type { Factory, Cluster, PurchaseBatch, Server, ServerDetail, AuditLog } from '../types';
+import type { Factory, Cluster, PurchaseBatch, Server, ServerDetail, AuditLog, DashboardSummary, FactoryBreakdown, ClusterUsage, ServerStatus, ClusterStatus } from '../types';
 import { SEED_FACTORIES, SEED_CLUSTERS, SEED_BATCHES, SEED_SERVERS } from './seed';
 
-const LS_KEY = 'mosite_mock_db';
+const LS_KEY = 'mosite_mock_db_v2';
 
 interface MockDB {
   factories: Factory[];
@@ -113,12 +113,19 @@ export async function db_getCluster(id: string): Promise<Cluster> {
   return delay({ ...cluster });
 }
 
-export async function db_updateCluster(id: string, data: Partial<Pick<Cluster, 'name' | 'description'>>): Promise<Cluster> {
+export async function db_updateCluster(
+  id: string,
+  data: Partial<Pick<Cluster, 'name' | 'description' | 'status' | 'factory_id' | 'type'>>
+): Promise<Cluster> {
   let updated: Cluster | undefined;
   mutate(d => {
     const c = d.clusters.find(x => x.id === id);
     if (!c) throw new Error('Cluster not found');
     Object.assign(c, data);
+    if (data.factory_id) {
+      const factory = d.factories.find(f => f.id === data.factory_id);
+      if (factory) c.factory_name = factory.name;
+    }
     updated = { ...c };
   });
   return delay(updated!);
@@ -315,10 +322,12 @@ function zeroStatusCounts(): Record<ServerStatus, number> {
 }
 
 export async function db_getDashboardSummary(): Promise<DashboardSummary> {
-  const servers = getDB().servers;
-  const status_counts = zeroStatusCounts();
-  for (const s of servers) status_counts[s.status]++;
-  return delay({ status_counts, total: servers.length });
+  const db = getDB();
+  const statuses: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+  const status_counts = Object.fromEntries(
+    statuses.map(s => [s, db.clusters.filter(c => c.status === s).length])
+  ) as Record<ClusterStatus, number>;
+  return delay({ status_counts, total: db.clusters.length });
 }
 
 export async function db_getByFactory(): Promise<FactoryBreakdown[]> {

@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Server, Network, Package, Building2, Settings } from 'lucide-react';
+import { LayoutDashboard, Server, Network, Package, Building2, Settings, CalendarDays } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/servers', label: 'Servers', icon: Server, end: false },
   { to: '/clusters', label: 'Clusters', icon: Network, end: false },
   { to: '/batches', label: '採購批次', icon: Package, end: false },
+  { to: '/timeline', label: 'Timeline', icon: CalendarDays, end: false },
 ];
 
 export default function Layout() {

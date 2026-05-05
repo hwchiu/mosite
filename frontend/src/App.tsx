@@ -8,6 +8,7 @@ import Clusters from './pages/Clusters';
 import Batches from './pages/Batches';
 import FactoryOverview from './pages/FactoryOverview';
 import Settings from './pages/Settings';
+import Timeline from './pages/Timeline';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/batches" element={<Batches />} />
             <Route path="/factory-overview" element={<FactoryOverview />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/timeline" element={<Timeline />} />
           </Route>
         </Routes>
       </BrowserRouter>

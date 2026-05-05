@@ -1,29 +1,37 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import StatusBadge from '../components/StatusBadge';
-import ModelBadge from '../components/ModelBadge';
-import { listClusters, createCluster, deleteCluster } from '../api/clusters';
+import { listClusters, createCluster, updateCluster, deleteCluster } from '../api/clusters';
 import { listFactories } from '../api/factories';
-import { listServers } from '../api/servers';
-import type { ClusterType } from '../types';
+import type { ClusterType, ClusterStatus, Cluster } from '../types';
 
-interface CreateClusterForm {
+const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
+  PO:           { label: 'PO',            bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
+  server_movein:{ label: 'Server Move-In', bg: 'bg-amber-50',  text: 'text-amber-700',   border: 'border-amber-200',   dotColor: '#f59e0b' },
+  infra:        { label: 'Infra',         bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dotColor: '#6366f1' },
+  cpld:         { label: 'CPLD',          bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dotColor: '#8b5cf6' },
+  sipd:         { label: 'SIPD',          bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
+};
+
+const STATUS_OPTIONS: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+
+interface ClusterForm {
   name: string;
   type: ClusterType | '';
   factory_id: string;
-  description: string;
+  status: ClusterStatus | '';
 }
 
-const emptyForm: CreateClusterForm = { name: '', type: '', factory_id: '', description: '' };
+const emptyForm: ClusterForm = { name: '', type: '', factory_id: '', status: '' };
 
 export default function Clusters() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<CreateClusterForm>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ClusterForm>(emptyForm);
   const [formError, setFormError] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const clustersQ = useQuery({ queryKey: ['clusters'], queryFn: () => listClusters() });
   const factoriesQ = useQuery({ queryKey: ['factories'], queryFn: listFactories });
@@ -39,28 +47,78 @@ export default function Clusters() {
     onError: (err: Error) => setFormError(err.message),
   });
 
-  const deleteMut = useMutation({
-    mutationFn: deleteCluster,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clusters'] }),
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Cluster> }) => updateCluster(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      setEditingId(null);
+      setForm(emptyForm);
+      setFormError('');
+    },
+    onError: (err: Error) => setFormError(err.message),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const deleteMut = useMutation({
+    mutationFn: deleteCluster,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      setDeleteConfirm(null);
+    },
+  });
+
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return setFormError('Name is required');
     if (!form.type) return setFormError('Type is required');
     if (!form.factory_id) return setFormError('Factory is required');
+    if (!form.status) return setFormError('Status is required');
     setFormError('');
     createMut.mutate({
       name: form.name.trim(),
       type: form.type as ClusterType,
       factory_id: form.factory_id,
-      description: form.description.trim() || undefined,
+      status: form.status as ClusterStatus,
     });
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    if (!form.name.trim()) return setFormError('Name is required');
+    if (!form.type) return setFormError('Type is required');
+    if (!form.factory_id) return setFormError('Factory is required');
+    if (!form.status) return setFormError('Status is required');
+    setFormError('');
+    updateMut.mutate({
+      id: editingId,
+      data: {
+        name: form.name.trim(),
+        type: form.type as ClusterType,
+        factory_id: form.factory_id,
+        status: form.status as ClusterStatus,
+      },
+    });
   };
+
+  const startEdit = (cluster: Cluster) => {
+    setEditingId(cluster.id);
+    setForm({
+      name: cluster.name,
+      type: cluster.type,
+      factory_id: cluster.factory_id,
+      status: cluster.status || 'PO',
+    });
+    setFormError('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormError('');
+  };
+
+  const clusters = clustersQ.data ?? [];
+  const factories = factoriesQ.data ?? [];
 
   return (
     <div className="space-y-5">
@@ -74,6 +132,111 @@ export default function Clusters() {
         </button>
       </div>
 
+      {/* Create/Edit Panel */}
+      {(showCreate || editingId) && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">
+              {editingId ? 'Edit Cluster' : 'Create Cluster'}
+            </h2>
+            <button
+              onClick={() => {
+                setShowCreate(false);
+                cancelEdit();
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-4">
+            {formError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                {formError}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Factory</label>
+                <select
+                  value={form.factory_id}
+                  onChange={(e) => setForm({ ...form, factory_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                >
+                  <option value="">Select Factory</option>
+                  {factories.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="e.g., F1-K8S-Prod"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as ClusterType })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                >
+                  <option value="">Select Type</option>
+                  <option value="k8s">k8s</option>
+                  <option value="vm">vm</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value as ClusterStatus })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                >
+                  <option value="">Select Status</option>
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_CONFIG[s].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreate(false);
+                  cancelEdit();
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createMut.isPending || updateMut.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {editingId ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Clusters Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {clustersQ.isLoading ? (
           <LoadingSpinner />
@@ -84,181 +247,93 @@ export default function Clusters() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Type</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Factory</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Description</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Actions</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Factory</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {clustersQ.data?.map((cluster) => (
-                  <>
-                    <tr
-                      key={cluster.id}
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => toggleExpand(cluster.id)}
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-2">
-                        {expandedId === cluster.id ? (
-                          <ChevronUp size={14} className="text-gray-400" />
-                        ) : (
-                          <ChevronDown size={14} className="text-gray-400" />
-                        )}
-                        {cluster.name}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                          cluster.type === 'k8s'
-                            ? 'bg-indigo-100 text-indigo-800 ring-indigo-300'
-                            : 'bg-teal-100 text-teal-800 ring-teal-300'
-                        }`}>
-                          {cluster.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{cluster.factory_name || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{cluster.description || '—'}</td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Delete cluster "${cluster.name}"?`)) {
-                              deleteMut.mutate(cluster.id);
-                            }
-                          }}
-                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                    {expandedId === cluster.id && (
-                      <tr key={`${cluster.id}-expanded`}>
-                        <td colSpan={5} className="bg-indigo-50 border-b border-indigo-100">
-                          <ClusterServers clusterId={cluster.id} />
+                {clusters
+                  .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
+                  .map((cluster) => {
+                    const status = cluster.status ?? 'PO';
+                    const config = STATUS_CONFIG[status];
+                    return (
+                      <tr key={cluster.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-3 whitespace-nowrap">
+                          <span className="text-sm font-medium text-gray-900">{cluster.factory_name}</span>
+                        </td>
+                        <td className="px-5 py-3 whitespace-nowrap">
+                          <span className="text-sm text-gray-700">{cluster.name}</span>
+                        </td>
+                        <td className="px-5 py-3 whitespace-nowrap">
+                          <span className="text-xs font-medium text-gray-500 uppercase">{cluster.type}</span>
+                        </td>
+                        <td className="px-5 py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${config.bg} ${config.text} ${config.border} border`}
+                          >
+                            <div
+                              className="w-1.5 h-1.5 rounded-full"
+                              style={{ backgroundColor: config.dotColor }}
+                            />
+                            {config.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => startEdit(cluster)}
+                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(cluster.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    )}
-                  </>
-                ))}
-                {!clustersQ.data?.length && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                      No clusters found. Create one to get started.
-                    </td>
-                  </tr>
-                )}
+                    );
+                  })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Create Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">Create Cluster</h3>
-              <button onClick={() => { setShowCreate(false); setForm(emptyForm); setFormError(''); }}
-                className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Cluster?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete this cluster? This action cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMut.mutate(deleteConfirm)}
+                disabled={deleteMut.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                Delete
+              </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {formError && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-red-600 text-sm">{formError}</div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cluster Name *</label>
-                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="prod-k8s-01" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Type *</label>
-                <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ClusterType }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="">Select type</option>
-                  <option value="k8s">Kubernetes (k8s)</option>
-                  <option value="vm">Virtual Machine (vm)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Factory *</label>
-                <select value={form.factory_id} onChange={(e) => setForm((f) => ({ ...f, factory_id: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="">Select factory</option>
-                  {factoriesQ.data?.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <textarea value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                  placeholder="Optional description..." />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => { setShowCreate(false); setForm(emptyForm); setFormError(''); }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" disabled={createMut.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60">
-                  {createMut.isPending ? 'Creating...' : 'Create Cluster'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function ClusterServers({ clusterId }: { clusterId: string }) {
-  const serversQ = useQuery({
-    queryKey: ['servers', 'cluster', clusterId],
-    queryFn: () => listServers({ factory_id: undefined }),
-    select: (data) => data.filter((s) => s.cluster_id === clusterId),
-  });
-
-  if (serversQ.isLoading) return <div className="px-6 py-4"><LoadingSpinner /></div>;
-  if (serversQ.isError) return <div className="px-6 py-3 text-red-500 text-sm">Failed to load servers.</div>;
-
-  const servers = serversQ.data ?? [];
-
-  return (
-    <div className="px-6 py-4">
-      <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-3">
-        {servers.length} Server{servers.length !== 1 ? 's' : ''} in this cluster
-      </p>
-      {servers.length > 0 ? (
-        <div className="rounded-lg overflow-hidden border border-indigo-200">
-          <table className="w-full text-xs">
-            <thead className="bg-indigo-100">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold text-indigo-700">Hostname</th>
-                <th className="px-3 py-2 text-left font-semibold text-indigo-700">Serial</th>
-                <th className="px-3 py-2 text-left font-semibold text-indigo-700">IP</th>
-                <th className="px-3 py-2 text-left font-semibold text-indigo-700">Model</th>
-                <th className="px-3 py-2 text-left font-semibold text-indigo-700">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-indigo-100 bg-white">
-              {servers.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-3 py-2 font-medium text-gray-800">{s.hostname}</td>
-                  <td className="px-3 py-2 font-mono text-gray-600">{s.serial_number}</td>
-                  <td className="px-3 py-2 text-gray-600">{s.ip_address || '—'}</td>
-                  <td className="px-3 py-2"><ModelBadge model={s.model} /></td>
-                  <td className="px-3 py-2"><StatusBadge status={s.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-sm text-indigo-400 italic">No servers assigned to this cluster.</p>
       )}
     </div>
   );

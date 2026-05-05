@@ -1,13 +1,11 @@
-import type { Factory, Cluster, PurchaseBatch, Server, ServerDetail, AuditLog, ClusterStatus } from '../types';
-import { SEED_FACTORIES, SEED_CLUSTERS, SEED_BATCHES, SEED_SERVERS } from './seed';
+import type { Factory, Cluster, DashboardSummary, ClusterStatus } from '../types';
+import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
-const LS_KEY = 'mosite_mock_db_v2';
+const LS_KEY = 'mosite_mock_db_v3';
 
 interface MockDB {
   factories: Factory[];
   clusters: Cluster[];
-  batches: PurchaseBatch[];
-  servers: ServerDetail[];
 }
 
 function uuid(): string {
@@ -32,8 +30,6 @@ function loadDB(): MockDB {
   return {
     factories: structuredClone(SEED_FACTORIES),
     clusters: structuredClone(SEED_CLUSTERS),
-    batches: structuredClone(SEED_BATCHES),
-    servers: structuredClone(SEED_SERVERS),
   };
 }
 
@@ -41,12 +37,12 @@ function saveDB(db: MockDB): void {
   localStorage.setItem(LS_KEY, JSON.stringify(db));
 }
 
+let _db: MockDB | null = null;
+
 function getDB(): MockDB {
   if (!_db) _db = loadDB();
   return _db;
 }
-
-let _db: MockDB | null = null;
 
 function mutate(fn: (db: MockDB) => void): void {
   const db = getDB();
@@ -58,8 +54,6 @@ export function resetDB(): void {
   _db = {
     factories: structuredClone(SEED_FACTORIES),
     clusters: structuredClone(SEED_CLUSTERS),
-    batches: structuredClone(SEED_BATCHES),
-    servers: structuredClone(SEED_SERVERS),
   };
   saveDB(_db);
 }
@@ -82,8 +76,8 @@ export async function db_createFactory(name: string): Promise<Factory> {
 
 export async function db_deleteFactory(id: string): Promise<void> {
   const db = getDB();
-  if (db.servers.find(s => s.factory_id === id)) {
-    throw new Error('Cannot delete factory: servers are referencing it');
+  if (db.clusters.find(c => c.factory_id === id)) {
+    throw new Error('Cannot delete factory: clusters are referencing it');
   }
   mutate(d => { d.factories = d.factories.filter(f => f.id !== id); });
   return delay(undefined);
@@ -132,187 +126,11 @@ export async function db_updateCluster(
 }
 
 export async function db_deleteCluster(id: string): Promise<void> {
-  const db = getDB();
-  if (db.servers.find(s => s.cluster_id === id)) {
-    throw new Error('Cannot delete cluster: servers are assigned to it');
-  }
   mutate(d => { d.clusters = d.clusters.filter(c => c.id !== id); });
   return delay(undefined);
 }
 
-// ── Batches ──────────────────────────────────────────────────────────────────
-
-export async function db_listBatches(factory_id?: string): Promise<PurchaseBatch[]> {
-  let list = [...getDB().batches];
-  if (factory_id) list = list.filter(b => b.factory_id === factory_id);
-  return delay(list.map(b => ({
-    ...b,
-    server_count: getDB().servers.filter(s => s.batch_id === b.id).length,
-  })));
-}
-
-export async function db_createBatch(data: Omit<PurchaseBatch, 'id' | 'created_at' | 'factory_name' | 'server_count'>): Promise<PurchaseBatch> {
-  const db = getDB();
-  const factory = data.factory_id ? db.factories.find(f => f.id === data.factory_id) : undefined;
-  const batch: PurchaseBatch = {
-    ...data,
-    id: uuid(),
-    factory_name: factory?.name,
-    server_count: 0,
-    created_at: now(),
-  };
-  mutate(d => d.batches.push(batch));
-  return delay({ ...batch });
-}
-
-export async function db_getBatch(id: string): Promise<PurchaseBatch> {
-  const batch = getDB().batches.find(b => b.id === id);
-  if (!batch) throw new Error('Batch not found');
-  return delay({
-    ...batch,
-    server_count: getDB().servers.filter(s => s.batch_id === id).length,
-  });
-}
-
-export async function db_updateBatch(id: string, data: Partial<Pick<PurchaseBatch, 'name' | 'notes'>>): Promise<PurchaseBatch> {
-  let updated: PurchaseBatch | undefined;
-  mutate(d => {
-    const b = d.batches.find(x => x.id === id);
-    if (!b) throw new Error('Batch not found');
-    Object.assign(b, data);
-    updated = { ...b };
-  });
-  return delay(updated!);
-}
-
-// ── Servers ──────────────────────────────────────────────────────────────────
-
-export interface ServerListParams {
-  factory_id?: string;
-  status?: string;
-  model?: string;
-  service_type?: string;
-  cluster_id?: string;
-  batch_id?: string;
-  search?: string;
-}
-
-export async function db_listServers(params: ServerListParams = {}): Promise<Server[]> {
-  let list: Server[] = getDB().servers.map(s => ({ ...s }));
-  if (params.factory_id) list = list.filter(s => s.factory_id === params.factory_id);
-  if (params.status) list = list.filter(s => s.status === params.status);
-  if (params.model) list = list.filter(s => s.model === params.model);
-  if (params.service_type) list = list.filter(s => s.service_type === params.service_type);
-  if (params.cluster_id) list = list.filter(s => s.cluster_id === params.cluster_id);
-  if (params.batch_id) list = list.filter(s => s.batch_id === params.batch_id);
-  if (params.search) {
-    const q = params.search.toLowerCase();
-    list = list.filter(s =>
-      s.hostname.toLowerCase().includes(q) ||
-      s.serial_number.toLowerCase().includes(q) ||
-      (s.ip_address ?? '').toLowerCase().includes(q)
-    );
-  }
-  return delay(list);
-}
-
-export async function db_createServer(data: Omit<Server, 'id' | 'created_at' | 'updated_at' | 'factory_name' | 'cluster_name' | 'batch_name'>): Promise<Server> {
-  const db = getDB();
-  if (db.servers.find(s => s.serial_number === data.serial_number)) {
-    throw new Error(`Serial number "${data.serial_number}" already exists`);
-  }
-  const factory = db.factories.find(f => f.id === data.factory_id);
-  const cluster = data.cluster_id ? db.clusters.find(c => c.id === data.cluster_id) : undefined;
-  const batch = data.batch_id ? db.batches.find(b => b.id === data.batch_id) : undefined;
-  const server: ServerDetail = {
-    ...data,
-    id: uuid(),
-    factory_name: factory?.name,
-    cluster_name: cluster?.name,
-    batch_name: batch?.name,
-    created_at: now(),
-    updated_at: now(),
-    audit_logs: [],
-  };
-  mutate(d => d.servers.push(server));
-  return delay({ ...server });
-}
-
-export async function db_bulkCreateServers(items: Omit<Server, 'id' | 'created_at' | 'updated_at' | 'factory_name' | 'cluster_name' | 'batch_name'>[]): Promise<Server[]> {
-  const results: Server[] = [];
-  for (const item of items) {
-    results.push(await db_createServer(item));
-  }
-  return results;
-}
-
-export async function db_getServer(id: string): Promise<ServerDetail> {
-  const s = getDB().servers.find(x => x.id === id);
-  if (!s) throw new Error('Server not found');
-  return delay(structuredClone(s));
-}
-
-export async function db_updateServer(
-  id: string,
-  data: Partial<Server> & { operator?: string; comment?: string }
-): Promise<Server> {
-  const db = getDB();
-  const server = db.servers.find(s => s.id === id);
-  if (!server) throw new Error('Server not found');
-
-  const { operator, comment, ...fields } = data;
-  const auditEntries: AuditLog[] = [];
-  const ts = now();
-
-  for (const [key, newVal] of Object.entries(fields)) {
-    const oldVal = (server as unknown as Record<string, unknown>)[key];
-    if (oldVal !== newVal && operator) {
-      auditEntries.push({
-        id: uuid(),
-        server_id: id,
-        operator,
-        field: key,
-        old_value: oldVal != null ? String(oldVal) : undefined,
-        new_value: newVal != null ? String(newVal) : undefined,
-        comment: comment,
-        created_at: ts,
-      });
-    }
-  }
-
-  if (fields.cluster_id !== undefined) {
-    const cluster = fields.cluster_id ? db.clusters.find(c => c.id === fields.cluster_id) : undefined;
-    fields.cluster_name = cluster?.name;
-  }
-
-  let updated: Server | undefined;
-  mutate(d => {
-    const s = d.servers.find(x => x.id === id);
-    if (!s) return;
-    Object.assign(s, fields, { updated_at: ts });
-    s.audit_logs = [...auditEntries.reverse(), ...s.audit_logs];
-    updated = { ...s };
-  });
-  return delay(updated!);
-}
-
-export async function db_transitionStatus(
-  id: string,
-  status: string,
-  operator: string,
-  comment?: string
-): Promise<Server> {
-  return db_updateServer(id, { status: status as Server['status'], operator, comment });
-}
-
-export async function db_deleteServer(id: string, operator: string, comment?: string): Promise<void> {
-  await db_updateServer(id, { status: 'retired', operator, comment: comment ?? 'Server retired' });
-  return delay(undefined);
-}
-
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-
-import type { DashboardSummary } from '../types';
 
 export async function db_getDashboardSummary(): Promise<DashboardSummary> {
   const db = getDB();

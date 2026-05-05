@@ -6,6 +6,23 @@ export type ServerStatus =
   | 'active'
   | 'retired';
 
+export type PhaseKey =
+  | 'purchased'
+  | 'waiting_infra'
+  | 'waiting_build'
+  | 'waiting_platform'
+  | 'active'
+  | 'retired';
+
+export type PhaseStatus = 'completed' | 'in_progress' | 'blocked' | 'estimated';
+
+export interface ClusterPhase {
+  phase: PhaseKey;
+  completionWeek: string;
+  status: PhaseStatus;
+  note?: string;
+}
+
 export type ServerModel = 'model_1' | 'model_2' | 'model_3';
 export type ServiceType = 'k8s' | 'vm';
 export type ClusterType = 'k8s' | 'vm';
@@ -24,6 +41,8 @@ export interface Cluster {
   factory_name?: string;
   description?: string;
   created_at: string;
+  serverCount?: number;
+  phases?: ClusterPhase[];
 }
 
 export interface PurchaseBatch {

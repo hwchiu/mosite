@@ -1,11 +1,22 @@
 import type { Factory, Cluster, DashboardSummary, ClusterStatus } from '../types';
+import { deriveClusterStatus } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
-const LS_KEY = 'mosite_mock_db_v3';
+const LS_KEY = 'mosite_mock_db_v4';
 
 interface MockDB {
   factories: Factory[];
   clusters: Cluster[];
+}
+
+function hydrateCluster(cluster: Cluster): Cluster {
+  const phases = [...(cluster.phases ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    ...cluster,
+    phases,
+    status: phases.length ? deriveClusterStatus(phases) : cluster.status ?? 'PO',
+  };
 }
 
 function uuid(): string {
@@ -86,7 +97,7 @@ export async function db_deleteFactory(id: string): Promise<void> {
 // ── Clusters ─────────────────────────────────────────────────────────────────
 
 export async function db_listClusters(factory_id?: string, type?: string): Promise<Cluster[]> {
-  let list = [...getDB().clusters];
+  let list = getDB().clusters.map(hydrateCluster);
   if (factory_id) list = list.filter(c => c.factory_id === factory_id);
   if (type) list = list.filter(c => c.type === type);
   return delay(list);
@@ -98,18 +109,18 @@ export async function db_createCluster(data: Omit<Cluster, 'id' | 'created_at' |
   if (!factory) throw new Error('Factory not found');
   const cluster: Cluster = { ...data, id: uuid(), factory_name: factory.name, created_at: now() };
   mutate(d => d.clusters.push(cluster));
-  return delay({ ...cluster });
+  return delay(hydrateCluster({ ...cluster }));
 }
 
 export async function db_getCluster(id: string): Promise<Cluster> {
   const cluster = getDB().clusters.find(c => c.id === id);
   if (!cluster) throw new Error('Cluster not found');
-  return delay({ ...cluster });
+  return delay(hydrateCluster({ ...cluster }));
 }
 
 export async function db_updateCluster(
   id: string,
-  data: Partial<Pick<Cluster, 'name' | 'description' | 'status' | 'factory_id' | 'type'>>
+  data: Partial<Pick<Cluster, 'name' | 'description' | 'status' | 'factory_id' | 'type' | 'phases'>>
 ): Promise<Cluster> {
   let updated: Cluster | undefined;
   mutate(d => {
@@ -120,7 +131,7 @@ export async function db_updateCluster(
       const factory = d.factories.find(f => f.id === data.factory_id);
       if (factory) c.factory_name = factory.name;
     }
-    updated = { ...c };
+    updated = hydrateCluster({ ...c });
   });
   return delay(updated!);
 }
@@ -133,14 +144,14 @@ export async function db_deleteCluster(id: string): Promise<void> {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export async function db_getDashboardSummary(): Promise<DashboardSummary> {
-  const db = getDB();
+  const clusters = getDB().clusters.map(hydrateCluster);
   const statuses: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
   const status_counts = Object.fromEntries(
-    statuses.map(s => [s, db.clusters.filter(c => c.status === s).length])
+    statuses.map(s => [s, clusters.filter(c => c.status === s).length])
   ) as Record<ClusterStatus, number>;
-  return delay({ status_counts, total: db.clusters.length });
+  return delay({ status_counts, total: clusters.length });
 }
 
 export function db_getTimelineClusters(): Promise<Cluster[]> {
-  return delay(getDB().clusters);
+  return delay(getDB().clusters.map(hydrateCluster));
 }

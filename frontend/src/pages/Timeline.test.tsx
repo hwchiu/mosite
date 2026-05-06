@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Timeline from './Timeline';
 import { resetDB } from '../mock/store';
@@ -54,14 +54,17 @@ describe('Timeline month view timezone alignment', () => {
     expect(screen.getByText('Jan')).toHaveClass('bg-indigo-50');
   });
 
-  it('does not show a dashed estimated legend entry', async () => {
+  it('does not show estimated or blocked legend entries', async () => {
     renderTimeline();
 
     await act(async () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(screen.queryByText('預估')).not.toBeInTheDocument();
-    expect(screen.getByText('藍色外框 = 當前 Phase')).toBeInTheDocument();
+    const legend = screen.getByText('藍色外框 = 當前 Phase').closest('div');
+
+    expect(legend).not.toBeNull();
+    expect(within(legend!).queryByText('預估')).not.toBeInTheDocument();
+    expect(within(legend!).queryByText(/BLOCKED/)).not.toBeInTheDocument();
   });
 });

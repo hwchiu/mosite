@@ -100,16 +100,7 @@ export default function Timeline() {
     return map;
   }, [clusters]);
 
-  // Factories with blocked clusters (auto-expand)
-  const blockedFactoryIds = useMemo(() =>
-    new Set(clusters.filter(c => c.phases?.some(p => p.status === 'blocked')).map(c => c.factory_id)),
-    [clusters]
-  );
-
   function handleShowAll() { setVisibleIds(new Set(factories.map(f => f.id))); }
-  function handleShowProblems() {
-    setVisibleIds(new Set(factories.filter(f => blockedFactoryIds.has(f.id)).map(f => f.id)));
-  }
 
   if (isLoading) {
     return <div className="flex-1 flex items-center justify-center text-gray-500">Loading...</div>;
@@ -126,7 +117,6 @@ export default function Timeline() {
           return next;
         })}
         onShowAll={handleShowAll}
-        onShowProblems={handleShowProblems}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TimelineToolbar

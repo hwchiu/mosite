@@ -1,3 +1,5 @@
+import { formatBusinessWeekLabel } from './utils';
+
 interface Props {
   columns: string[];   // e.g. ["2026-W16", "2026-W17", ...]
   nowColumn: string;
@@ -12,7 +14,6 @@ export default function WeekHeader({ columns, nowColumn }: Props) {
       <div className="px-2 py-1.5 text-[10px] font-bold text-gray-700">Cluster</div>
       {columns.map(col => {
         const isNow = col === nowColumn;
-        const [, weekPart] = col.split('-');
         return (
           <div
             key={col}
@@ -20,7 +21,7 @@ export default function WeekHeader({ columns, nowColumn }: Props) {
               isNow ? 'text-indigo-700 font-semibold bg-indigo-50' : 'text-gray-400'
             }`}
           >
-            <div>{isNow ? 'NOW' : weekPart}</div>
+            <div>{isNow ? 'NOW' : formatBusinessWeekLabel(col)}</div>
           </div>
         );
       })}

@@ -114,6 +114,24 @@ describe('mock store derived schedule', () => {
     expect(reloaded.phases?.find((phase) => phase.phase === 'server_movein')?.status).toBe('estimated');
   });
 
+  it('clears stale blocked phase flags when a status-only update advances a blocked cluster', async () => {
+    const { db_getCluster, db_updateCluster } = await importFreshStore();
+
+    const updated = await resolveAfterDelay(db_updateCluster('c19', { status: 'infra' }));
+
+    expect(updated.status).toBe('infra');
+    expect(updated.phases?.find((phase) => phase.phase === 'server_movein')?.status).toBe('completed');
+    expect(updated.phases?.find((phase) => phase.phase === 'infra')?.status).toBe('in_progress');
+    expect(updated.phases?.some((phase) => phase.status === 'blocked')).toBe(false);
+
+    const reloaded = await resolveAfterDelay(db_getCluster('c19'));
+
+    expect(reloaded.status).toBe('infra');
+    expect(reloaded.phases?.find((phase) => phase.phase === 'server_movein')?.status).toBe('completed');
+    expect(reloaded.phases?.find((phase) => phase.phase === 'infra')?.status).toBe('in_progress');
+    expect(reloaded.phases?.some((phase) => phase.status === 'blocked')).toBe(false);
+  });
+
   it('accepts phase updates and normalizes the returned cluster from phase dates', async () => {
     const { db_getCluster, db_updateCluster } = await importFreshStore();
 

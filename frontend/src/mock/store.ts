@@ -130,10 +130,15 @@ function translateStatusUpdateToSchedule(
   const targetUtc = new Date(`${targetPhase.date}T00:00:00Z`);
   const deltaDays = Math.round((todayUtc.getTime() - targetUtc.getTime()) / 86400000);
 
-  return sorted.map((phase) => ({
-    ...phase,
-    date: shiftISODate(phase.date, deltaDays),
-  }));
+  return sorted.map((phase) => {
+    const phaseWithoutStatus = { ...phase };
+    delete phaseWithoutStatus.status;
+
+    return {
+      ...phaseWithoutStatus,
+      date: shiftISODate(phase.date, deltaDays),
+    };
+  });
 }
 
 function hydrateCluster(cluster: Cluster): Cluster {

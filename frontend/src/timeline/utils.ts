@@ -11,6 +11,8 @@ export function parseISOWeek(w: string): { year: number; week: number } {
   return { year: parseInt(yearStr), week: parseInt(weekStr) };
 }
 
+export const PHASE_ORDER: PhaseKey[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+
 export function compareWeeks(a: string, b: string): -1 | 0 | 1 {
   const pa = parseISOWeek(a);
   const pb = parseISOWeek(b);
@@ -40,6 +42,58 @@ export function weekToMonth(w: string): string {
   thursday.setDate(monday.getDate() + 3);
   const m = String(thursday.getMonth() + 1).padStart(2, '0');
   return `${thursday.getFullYear()}-${m}`;
+}
+
+export function dateToWeekKey(date: string): string {
+  const source = new Date(`${date}T00:00:00Z`);
+  const thursday = new Date(source);
+  thursday.setUTCDate(source.getUTCDate() - ((source.getUTCDay() + 6) % 7) + 3);
+  const year = thursday.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const week =
+    Math.round(
+      ((thursday.getTime() - jan4.getTime()) / 86400000 + ((jan4.getUTCDay() + 6) % 7) - 3) / 7,
+    ) + 1;
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+export function dateToMonthKey(date: string): string {
+  return date.slice(0, 7);
+}
+
+export function formatBusinessWeekLabel(weekKey: string): string {
+  const { year, week } = parseISOWeek(weekKey);
+  return `W${String(year).slice(-1)}${String(week).padStart(2, '0')}`;
+}
+
+export function deriveClusterStatus(phases: ClusterPhase[], today = new Date()): PhaseKey {
+  const todayKey = today.toISOString().slice(0, 10);
+  const sorted = [...phases].sort((a, b) => a.date.localeCompare(b.date));
+  const current = [...sorted].reverse().find((phase) => phase.date <= todayKey) ?? sorted[0];
+  return current?.phase ?? 'PO';
+}
+
+function formatPhaseName(phase: PhaseKey): string {
+  if (phase === 'PO') return 'PO';
+  if (phase === 'server_movein') return 'Move-In';
+  return phase.toUpperCase();
+}
+
+export function validatePhaseDates(phases: ClusterPhase[]): Partial<Record<PhaseKey, string>> {
+  const errors: Partial<Record<PhaseKey, string>> = {};
+  const sorted = [...phases].sort(
+    (a, b) => PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase),
+  );
+
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].date < sorted[i - 1].date) {
+      errors[sorted[i].phase] =
+        `${formatPhaseName(sorted[i].phase)} date must be on or after ` +
+        `${formatPhaseName(sorted[i - 1].phase)} date.`;
+    }
+  }
+
+  return errors;
 }
 
 export function currentISOWeek(): string {
@@ -87,42 +141,45 @@ export function buildMonthColumns(year: number): string[] {
 export function resolveClusterCells(
   phases: ClusterPhase[],
   columns: string[],
-  mode: 'week' | 'month'
+  mode: 'week' | 'month',
+  today = new Date(),
 ): ResolvedPhaseCell[] {
   if (!phases.length) {
     return columns.map(() => ({ phases: [], status: 'empty', isCurrentPhase: false }));
   }
 
-  // Normalize completion keys to the current mode
-  const normalize = (w: string) => mode === 'month' ? weekToMonth(w) : w;
+  const normalize = (date: string) => (mode === 'month' ? dateToMonthKey(date) : dateToWeekKey(date));
+  const sorted = [...phases].sort((a, b) => a.date.localeCompare(b.date));
+  const currentPhase = deriveClusterStatus(sorted, today);
 
-  // Find current in-progress phase key
-  const currentPhase = phases.find(p => p.status === 'in_progress' || p.status === 'blocked');
-
-  return columns.map(col => {
+  return columns.map((col) => {
     const matchingPhases: PhaseKey[] = [];
     let cellStatus: PhaseStatus | 'empty' = 'empty';
     let isCurrentPhase = false;
 
-    for (let i = 0; i < phases.length; i++) {
-      const p = phases[i];
-      const pCol = normalize(p.completionWeek);
-
-      let covered = false;
-      if (i === 0) {
-        covered = col === pCol;
-      } else {
-        const prevCol = normalize(phases[i - 1].completionWeek);
-        // col > prevCol AND col <= pCol
-        // Special case: if prevCol === pCol (same-week completion), also include this column
-        covered = (compareColumns(prevCol, col) < 0 && compareColumns(col, pCol) <= 0) ||
-                  (col === pCol && compareColumns(prevCol, pCol) === 0);
-      }
+    for (let i = 0; i < sorted.length; i++) {
+      const phase = sorted[i];
+      const phaseColumn = normalize(phase.date);
+      const prevColumn = i === 0 ? null : normalize(sorted[i - 1].date);
+      const covered =
+        i === 0
+          ? col === phaseColumn
+          : (compareColumns(prevColumn!, col) < 0 && compareColumns(col, phaseColumn) <= 0) ||
+            (col === phaseColumn && prevColumn === phaseColumn);
 
       if (covered) {
-        matchingPhases.push(p.phase);
-        cellStatus = p.status;
-        if (currentPhase && p.phase === currentPhase.phase) {
+        matchingPhases.push(phase.phase);
+        const nextStatus =
+          phase.status === 'blocked'
+            ? 'blocked'
+            : phase.date > today.toISOString().slice(0, 10)
+              ? 'estimated'
+              : phase.phase === currentPhase
+                ? 'in_progress'
+                : 'completed';
+        cellStatus =
+          cellStatus === 'in_progress' && nextStatus === 'estimated' ? cellStatus : nextStatus;
+        if (phase.phase === currentPhase) {
           isCurrentPhase = true;
         }
       }

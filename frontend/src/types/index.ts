@@ -6,8 +6,8 @@ export type PhaseStatus = 'completed' | 'in_progress' | 'blocked' | 'estimated';
 
 export interface ClusterPhase {
   phase: PhaseKey;
-  completionWeek: string;
-  status: PhaseStatus;
+  date: string;
+  status?: PhaseStatus;
   note?: string;
 }
 

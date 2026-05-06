@@ -6,6 +6,11 @@ import {
   weekToMonth,
   buildWeekColumns,
   buildMonthColumns,
+  dateToWeekKey,
+  dateToMonthKey,
+  formatBusinessWeekLabel,
+  deriveClusterStatus,
+  validatePhaseDates,
   resolveClusterCells,
 } from './utils';
 import type { ClusterPhase } from '../types';
@@ -75,12 +80,58 @@ describe('compareColumns', () => {
   });
 });
 
+describe('formatBusinessWeekLabel', () => {
+  it('formats 2026 week labels as W6xx', () => {
+    expect(formatBusinessWeekLabel('2026-W01')).toBe('W601');
+    expect(formatBusinessWeekLabel('2026-W19')).toBe('W619');
+  });
+});
+
+describe('date-derived schedule helpers', () => {
+  it('maps an ISO date to week and month keys', () => {
+    expect(dateToWeekKey('2026-01-01')).toBe('2026-W01');
+    expect(dateToMonthKey('2026-05-05')).toBe('2026-05');
+  });
+
+  it('derives the current cluster status from milestone dates', () => {
+    const phases: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-05-01' },
+      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'infra', date: '2026-05-09' },
+    ];
+
+    expect(deriveClusterStatus(phases, new Date('2026-05-06T00:00:00Z'))).toBe('server_movein');
+  });
+
+  it('returns field errors when a milestone moves backward', () => {
+    const phases: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-05-06' },
+      { phase: 'server_movein', date: '2026-05-05' },
+    ];
+
+    expect(validatePhaseDates(phases)).toEqual({
+      server_movein: 'Move-In date must be on or after PO date.',
+    });
+  });
+
+  it('validates milestone order even when phases are unsorted', () => {
+    const phases: ClusterPhase[] = [
+      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'PO', date: '2026-05-06' },
+    ];
+
+    expect(validatePhaseDates(phases)).toEqual({
+      server_movein: 'Move-In date must be on or after PO date.',
+    });
+  });
+});
+
 
 describe('resolveClusterCells', () => {
   const phases: ClusterPhase[] = [
-    { phase: 'PO',           completionWeek: '2026-W17', status: 'completed' },
-    { phase: 'server_movein',completionWeek: '2026-W19', status: 'in_progress' },
-    { phase: 'infra',        completionWeek: '2026-W22', status: 'estimated' },
+    { phase: 'PO', date: '2026-04-20', status: 'completed' },
+    { phase: 'server_movein', date: '2026-05-04', status: 'in_progress' },
+    { phase: 'infra', date: '2026-05-25', status: 'estimated' },
   ];
 
   it('returns one cell per column', () => {
@@ -116,13 +167,30 @@ describe('resolveClusterCells', () => {
 
   it('handles same-week multi-phase (B1 gradient scenario)', () => {
     const samePhasesWeek: ClusterPhase[] = [
-      { phase: 'PO',           completionWeek: '2026-W16', status: 'completed' },
-      { phase: 'server_movein',completionWeek: '2026-W16', status: 'completed' },
-      { phase: 'infra',        completionWeek: '2026-W19', status: 'in_progress' },
+      { phase: 'PO', date: '2026-04-13', status: 'completed' },
+      { phase: 'server_movein', date: '2026-04-14', status: 'completed' },
+      { phase: 'infra', date: '2026-05-04', status: 'in_progress' },
     ];
     const cols = ['2026-W16'];
     const cells = resolveClusterCells(samePhasesWeek, cols, 'week');
     expect(cells[0].phases).toEqual(['PO', 'server_movein']);
+  });
+
+  it('keeps current phase marker for multi-phase cells', () => {
+    const samePhasesWeek: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-04-13' },
+      { phase: 'server_movein', date: '2026-04-14' },
+    ];
+
+    const cells = resolveClusterCells(
+      samePhasesWeek,
+      ['2026-W16'],
+      'week',
+      new Date('2026-04-13T00:00:00Z'),
+    );
+
+    expect(cells[0].isCurrentPhase).toBe(true);
+    expect(cells[0].status).toBe('in_progress');
   });
 
   it('maps weeks to months in month mode', () => {
@@ -139,8 +207,8 @@ describe('resolveClusterCells', () => {
 
   it('uses blocked status for blocked phases', () => {
     const blockedPhases: ClusterPhase[] = [
-      { phase: 'PO',           completionWeek: '2026-W17', status: 'completed' },
-      { phase: 'server_movein',completionWeek: '2026-W20', status: 'blocked' },
+      { phase: 'PO', date: '2026-04-20', status: 'completed' },
+      { phase: 'server_movein', date: '2026-05-11', status: 'blocked' },
     ];
     const cols = ['2026-W18', '2026-W19', '2026-W20'];
     const cells = resolveClusterCells(blockedPhases, cols, 'week');

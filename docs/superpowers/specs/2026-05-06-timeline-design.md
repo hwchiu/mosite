@@ -1,194 +1,204 @@
-# Timeline Page Design
+# Timeline Date-Driven Schedule Design
 
 ## Overview
 
-The Timeline page gives server administrators a unified Gantt-style view of every cluster's lifecycle phases across all factory sites. It is the primary tool for understanding deployment progress, identifying blockers, and planning upcoming work.
+The timeline page will move from a **week-first** model to a **date-first** model. Each cluster will store exact milestone dates for `PO`, `Move-In`, `Infra`, `CPLD`, and `SIPD`, and the application will derive the timeline placement, the displayed week text, and the cluster's current status from those dates.
 
----
+This change also includes a small timeline UI cleanup:
+
+- use the same color for every factory dot in the sidebar
+- remove the `只看異常` button from the factory filter section
+- change week labels to the preferred `W6xx` style for 2026 (for example, week 1 becomes `W601`)
+
+## Goals
+
+- Make milestone dates the single source of truth for cluster schedule data.
+- Let users maintain milestone dates from the existing Clusters create/edit form.
+- Keep the timeline display automatically synchronized with configured dates.
+- Enforce a forward-only milestone sequence so later phases cannot be scheduled before earlier ones.
+- Preserve week and month timeline views while changing the underlying source data.
+
+## Non-Goals
+
+- Adding inline editing to the timeline page
+- Supporting yearless `MM/DD` storage
+- Adding drag-and-drop timeline scheduling
+- Redesigning the overall page layout beyond the requested sidebar and week-label adjustments
 
 ## Data Model
 
-### ClusterPhase
+### Cluster milestone shape
 
-Each cluster has an ordered sequence of phases. Each phase records only the **completion week** (ISO week string, e.g. `"2025-W23"`), not an exact date. Future/planned phases store an estimated completion week marked as `estimated: true`.
+Replace the current week-based milestone source with exact dates.
 
 ```ts
-type PhaseKey =
-  | 'purchased'       // 採購完畢
-  | 'waiting_infra'   // 等待 Infra Team
-  | 'waiting_build'   // 等待 Cluster Buildup
-  | 'waiting_platform'// 等待 Platform Team
-  | 'active'          // Active
-  | 'retired'         // Retired (terminal)
+type ClusterStatus = 'PO' | 'server_movein' | 'infra' | 'cpld' | 'sipd';
 
-type PhaseStatus = 'completed' | 'in_progress' | 'blocked' | 'estimated'
+type PhaseStatus = 'completed' | 'in_progress' | 'blocked' | 'estimated';
 
 interface ClusterPhase {
-  phase: PhaseKey
-  completionWeek: string   // ISO week, e.g. "2025-W23"
-  status: PhaseStatus
-  note?: string            // e.g. block reason
-}
-
-interface Cluster {
-  id: string
-  name: string
-  factoryId: string
-  serviceType: 'k8s' | 'vm'
-  serverCount: number
-  phases: ClusterPhase[]   // ordered, earliest first
+  phase: ClusterStatus;
+  date: string;          // YYYY-MM-DD
+  status?: PhaseStatus;  // optional override for blocked / estimated / in_progress styling
+  note?: string;
 }
 ```
 
-**Key constraint:** `completionWeek` is the single source of truth. No start dates are stored. The start week of phase N is inferred as the completion week of phase N−1.
+### Source-of-truth rules
 
----
+- `date` is the canonical schedule value for each milestone.
+- The UI may display `MM/DD`, but storage must keep the full year.
+- Week columns and month columns are derived from `date`, not entered manually.
+- The cluster's overall current status is derived from the latest milestone whose date is on or before today.
+- `blocked` remains an exception style on a milestone, not a second scheduling model.
 
-## Timeline Rendering Rules
+### Ordering rule
 
-### Cell assignment
+Milestones must remain in this order:
 
-For a given time column (week or month), a cluster row renders a colored cell if any phase's span covers that column.
-
-- Phase span = from previous phase's completion week (exclusive) → this phase's completion week (inclusive)
-- First phase span: the first phase occupies exactly its own completion week as a single-column span (no prior phase to extend from)
-
-### Single-phase cell
-Solid fill using the phase color:
-
-| Phase | Color |
-|---|---|
-| purchased | `#6c7086` (grey) |
-| waiting_infra | `#fab387` (peach) |
-| waiting_build | `#89b4fa` (blue) |
-| waiting_platform | `#cba6f7` (purple) |
-| active | `#a6e3a1` (green) |
-| retired | `#45475a` (dark grey) |
-
-### Multi-phase cell (B1 — linear gradient)
-When 2 or more phases complete in the same week/month column, use a **left-to-right linear gradient** dividing the cell into equal-width color bands in phase order:
-
-- 2 phases → 50% / 50%
-- 3 phases → 33% / 33% / 33%
-- 4 phases → 25% each
-
-### Current phase highlight
-The cell containing the cluster's current in-progress phase gets a `2px solid #cba6f7` outline.
-
-### Blocked phase
-Blocked phases use `background: #f38ba840` with `border: 2px dashed #f38ba8`. Blocked cells extend across future weeks until unblocked.
-
-### Estimated future phases
-Dashed border (`border: 1px dashed <phase-color>`), transparent or faded fill.
-
----
-
-## Week ↔ Month Conversion
-
-When the user switches to **month view**, each cluster's phases are re-mapped: a phase's completion week becomes the month that week falls in. Multi-phase-per-month cells follow the same B1 gradient rule.
-
----
-
-## Navigation
-
-### Week view
-- Default window: W−3 to W+10 (14 columns total)
-- "◀ 上3週" / "下3週 ▶" shift the window by 3 weeks
-- "回今天" anchors the window back to W−3 / W+10
-
-### Month view
-- Shows 12 columns = Jan–Dec of the **calendar year containing today** (default)
-- "◀" / "▶" navigate year by year (e.g. 2025 → 2026)
-
----
-
-## Multi-Factory Layout
-
-### Structure
-
-```
-┌──────────┬─────────────────────────────────────┐
-│ Sidebar  │ Toolbar (week/month toggle, nav)     │
-│ (filter) ├─────────────────────────────────────┤
-│          │ Week header (sticky)                 │
-│ Factory  ├─────────────────────────────────────┤
-│ checkboxes│ Factory group header (sticky, click)│
-│          │   Cluster row                        │
-│ [全部]   │   Cluster row                        │
-│ [⚠異常] │ Factory group header                 │
-│          │   Cluster row                        │
-│ ☑ F1    └─────────────────────────────────────┘
-│ ☑ F2     Legend bar (sticky bottom)
-│ ☑ F3
-│ ☐ F4 …
-└──────────
+```text
+PO -> server_movein -> infra -> cpld -> sipd
 ```
 
-### Factory group header
-Each factory occupies a sticky sub-header row showing:
-- Factory name + color dot
-- Cluster count badge
-- Phase summary (e.g. `🟢 Active×2  🔨 Building×1`)
-- `⚠ BLOCKED` warning badge if any cluster is blocked
-- Click to collapse/expand all clusters in that factory
+Validation rules:
 
-### Default state
-- All factories visible and **expanded**
-- Any factory with a BLOCKED cluster is auto-expanded on page load
+- `server_movein` date cannot be earlier than `PO`
+- `infra` date cannot be earlier than `server_movein`
+- `cpld` date cannot be earlier than `infra`
+- `sipd` date cannot be earlier than `cpld`
 
-### Left sidebar
-- **全部廠區** button — show all
-- **⚠ 只看異常** button — hide factories with no issues
-- Per-factory checkboxes (F1–F25) — show/hide individual factories
+Equality is allowed if the business wants same-day transitions. The important constraint is that the sequence never moves backward.
 
----
+## Derived Timeline Behavior
 
-## UI Components
+### Date conversion
 
-### `<TimelinePage>`
-Top-level page. Owns view mode state (`week|month`), current window offset, and factory filter state.
+Add shared timeline/date helpers that convert each milestone date into:
 
-### `<FactorySidebar>`
-Checkbox list of all factories. Emits filter changes to parent.
+- `displayDate`: `MM/DD`
+- `weekColumn`: week key used by the week timeline
+- `monthColumn`: `YYYY-MM`
+- derived cluster current status
 
-### `<TimelineToolbar>`
-View toggle, navigation buttons, "回今天" button.
+### Week label format
 
-### `<WeekHeader>` / `<MonthHeader>`
-Sticky column labels. Highlights current week/month.
+The internal week key can remain stable and sortable, but the rendered header text must use the shortened business format:
 
-### `<FactoryGroup>`
-Collapsible section for one factory. Contains factory header + list of `<ClusterRow>`.
+- 2026 week 1 -> `W601`
+- 2026 week 6 -> `W606`
+- 2026 week 19 -> `W619`
 
-### `<ClusterRow>`
-Renders one cluster across all time columns. Each cell computed from `ClusterPhase[]` + current window. Produces a `ResolvedPhaseCell[]` array passed to `<PhaseCell>`.
+This is a presentation rule for week labels, not a change to chronological ordering.
 
-### `<PhaseCell>`
-Single time-column cell. Accepts `ResolvedPhaseCell`:
-```ts
-interface ResolvedPhaseCell {
-  phases: PhaseKey[]       // 1 = solid, 2+ = B1 gradient
-  status: PhaseStatus      // drives blocked/estimated style
-  isCurrentPhase: boolean  // drives purple outline
-}
-```
+### Timeline cell resolution
 
----
+The timeline still renders spans from one milestone to the next, but those spans are derived from ordered milestone dates:
 
-## Mock Data Requirements
+- the first milestone occupies its own resolved week/month column
+- each later milestone covers the span from the previous milestone date forward through its own milestone date
+- month view groups those derived week placements into month columns
+- multi-phase same-column rendering continues to work when multiple milestone dates resolve to the same week or month
 
-The existing `seed.ts` needs extension:
-- Each cluster must have a `phases: ClusterPhase[]` array with realistic completion weeks
-- At least one cluster should have multi-phase-same-week scenario (to validate B1 rendering)
-- At least one cluster should be `blocked`
-- At least one cluster should have future `estimated` phases (to validate dashed rendering)
-- Factories F1–F5 should each have 2–4 clusters with overlapping timelines
+### Current and future states
 
----
+- Milestones dated before today are treated as completed unless explicitly marked blocked
+- The latest milestone whose date is on or before today becomes the cluster's derived current status
+- Milestones after today are treated as planned/estimated unless explicitly blocked
 
-## Out of Scope (v1)
+## UI Changes
 
-- Drag-to-edit phases on the timeline
-- Per-cluster drill-down page from timeline (may link to existing cluster detail)
-- Export to PDF/PNG
-- Real-time collaborative editing
+### Timeline sidebar
+
+In `FactorySidebar`:
+
+- remove the `⚠ 只看異常` button
+- keep the `全部廠區` action
+- show the same dot color for every factory item instead of cycling through a palette
+
+This keeps the sidebar visually neutral and avoids implying factory-specific meanings that are not used elsewhere.
+
+### Week header
+
+In `WeekHeader`:
+
+- keep the current sticky header and current-week highlighting
+- change the rendered text from `W06`-style fragments to the business format `W6xx`
+
+### Cluster editing
+
+The existing Clusters page create/edit form becomes the schedule editing surface.
+
+Add date inputs for:
+
+- `PO`
+- `Move-In`
+- `Infra`
+- `CPLD`
+- `SIPD`
+
+The form remains the only editing UI for timeline schedule data in this phase.
+
+## Component Responsibilities
+
+### `frontend/src/pages/Clusters.tsx`
+
+- render milestone date inputs in create/edit mode
+- validate ordering before submit
+- surface field-level validation errors when a milestone moves backward
+
+### `frontend/src/types/index.ts`
+
+- update `ClusterPhase` to use `date` instead of `completionWeek`
+- keep phase ordering and shared types centralized here
+
+### `frontend/src/mock/seed.ts`
+
+- migrate seeded clusters to full `YYYY-MM-DD` milestone dates
+- keep seed data realistic across factories so dashboard, clusters, and timeline stay consistent
+
+### `frontend/src/mock/store.ts`
+
+- persist the new date-driven phase shape in local storage
+- continue exposing clusters through the existing mock API boundary
+
+### `frontend/src/timeline/utils.ts`
+
+- add date parsing/formatting helpers
+- derive internal week keys from dates
+- format rendered week labels as `W6xx`
+- resolve timeline cells from date-driven milestones
+- centralize forward-only validation so the rule is enforced outside the form as well
+
+### `frontend/src/pages/Timeline.tsx` and timeline subcomponents
+
+- consume derived schedule data
+- remove dependency on manually-entered week strings
+- preserve existing week/month navigation behavior
+
+## Validation and Error Handling
+
+- Reject cluster edits that violate milestone ordering.
+- Show clear validation near the offending field rather than silently correcting values.
+- Reject invalid or unparseable stored dates in shared helpers instead of silently dropping milestones.
+- Keep blocked styling explicit: if a milestone is marked blocked, render it as blocked even though its date is still present.
+
+## Testing
+
+Update or add tests for:
+
+- week label formatting (`W601`, `W619`, etc.)
+- date-to-week conversion
+- date-to-month conversion
+- derived current cluster status from milestone dates
+- same-column multi-phase rendering after date conversion
+- forward-only validation failures
+- seed/mock data compatibility with the updated `ClusterPhase` type
+
+## Migration Notes
+
+- Existing seed data currently stores `completionWeek`; it must be rewritten to exact dates.
+- Existing local storage data may no longer match the new phase shape. During implementation, decide whether to bump the mock DB key or add a compatibility reset path so stale browser data does not break the UI.
+
+## Implementation Summary
+
+The implementation should keep the current page structure and navigation intact while replacing the timeline's scheduling source from week strings to exact milestone dates. The Clusters page becomes the schedule editor, the Timeline page becomes a pure derived view, and ordering validation ensures that milestone schedules always move forward in time.

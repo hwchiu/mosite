@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Network, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Network, CalendarDays, Menu, X } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -8,44 +9,64 @@ const navItems = [
 ];
 
 export default function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-60 bg-gray-900 text-white flex flex-col shadow-lg shrink-0">
-        <div className="px-6 py-5 border-b border-gray-700">
-          <h1 className="text-lg font-bold tracking-tight text-white leading-tight">
-            MoSite
-          </h1>
-          <p className="text-xs text-gray-400 mt-0.5">Server Management</p>
-        </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`
-              }
+      {sidebarOpen && (
+        <aside className="w-60 bg-gray-900 text-white flex flex-col shadow-lg shrink-0">
+          <div className="px-6 py-5 border-b border-gray-700 flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-white leading-tight">
+                MoSite
+              </h1>
+              <p className="text-xs text-gray-400 mt-0.5">Server Management</p>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
+              className="text-gray-400 hover:text-white transition-colors"
             >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="px-6 py-4 border-t border-gray-700">
-          <p className="text-xs text-gray-500">v1.0.0</p>
-        </div>
-      </aside>
+              <X size={18} />
+            </button>
+          </div>
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {navItems.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="px-6 py-4 border-t border-gray-700">
+            <p className="text-xs text-gray-500">v1.0.0</p>
+          </div>
+        </aside>
+      )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center shadow-sm shrink-0">
+        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm shrink-0">
+          <button
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <Menu size={20} />
+          </button>
           <h2 className="text-base font-semibold text-gray-700">
             MoSite — Server Management
           </h2>

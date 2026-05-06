@@ -100,7 +100,7 @@ describe('Clusters milestone date editing', () => {
 
     const form = getForm();
     expect(form.querySelector('select[name="status"]')).toBeNull();
-    expect(form.querySelectorAll('input[type="date"]')).toHaveLength(5);
+    expect(form.querySelectorAll('input[type="date"]')).toHaveLength(6);
 
     fireEvent.change(getNamedElement<HTMLSelectElement>(form, 'select[name="factory_id"]'), {
       target: { value: 'f10' },
@@ -111,11 +111,12 @@ describe('Clusters milestone date editing', () => {
     fireEvent.change(getNamedElement<HTMLSelectElement>(form, 'select[name="type"]'), {
       target: { value: 'k8s' },
     });
-    setPhaseDate(form, 'PO', '2026-05-01');
-    setPhaseDate(form, 'server_movein', '2026-05-05');
+    setPhaseDate(form, 'purchase', '2026-05-01');
+    setPhaseDate(form, 'movein', '2026-05-05');
     setPhaseDate(form, 'infra', '2026-05-09');
-    setPhaseDate(form, 'cpld', '2026-05-12');
-    setPhaseDate(form, 'sipd', '2026-05-16');
+    setPhaseDate(form, 'cluster', '2026-05-12');
+    setPhaseDate(form, 'platform', '2026-05-16');
+    setPhaseDate(form, 'release', '2026-05-20');
 
     fireEvent.click(within(form).getByRole('button', { name: 'Create' }));
 
@@ -123,11 +124,12 @@ describe('Clusters milestone date editing', () => {
     await waitFor(async () => {
       const created = (await clustersApi.listClusters()).find((cluster) => cluster.name === 'F10-K8S-New');
       expect(created?.phases?.map(({ phase, date }) => ({ phase, date }))).toEqual([
-        { phase: 'PO', date: '2026-05-01' },
-        { phase: 'server_movein', date: '2026-05-05' },
+        { phase: 'purchase', date: '2026-05-01' },
+        { phase: 'movein', date: '2026-05-05' },
         { phase: 'infra', date: '2026-05-09' },
-        { phase: 'cpld', date: '2026-05-12' },
-        { phase: 'sipd', date: '2026-05-16' },
+        { phase: 'cluster', date: '2026-05-12' },
+        { phase: 'platform', date: '2026-05-16' },
+        { phase: 'release', date: '2026-05-20' },
       ]);
     });
   });
@@ -148,15 +150,16 @@ describe('Clusters milestone date editing', () => {
     fireEvent.change(getNamedElement<HTMLSelectElement>(form, 'select[name="type"]'), {
       target: { value: 'k8s' },
     });
-    setPhaseDate(form, 'PO', '2026-05-06');
-    setPhaseDate(form, 'server_movein', '2026-05-05');
+    setPhaseDate(form, 'purchase', '2026-05-06');
+    setPhaseDate(form, 'movein', '2026-05-05');
     setPhaseDate(form, 'infra', '2026-05-09');
-    setPhaseDate(form, 'cpld', '2026-05-12');
-    setPhaseDate(form, 'sipd', '2026-05-16');
+    setPhaseDate(form, 'cluster', '2026-05-12');
+    setPhaseDate(form, 'platform', '2026-05-16');
+    setPhaseDate(form, 'release', '2026-05-20');
 
     fireEvent.click(within(form).getByRole('button', { name: 'Create' }));
 
-    expect(await screen.findByText('Move-In date must be on or after PO date.')).toBeInTheDocument();
+    expect(await screen.findByText('Move-In date must be on or after Purchase date.')).toBeInTheDocument();
     expect((await clustersApi.listClusters()).some((cluster) => cluster.name === 'F10-K8S-OutOfOrder')).toBe(false);
   });
 
@@ -172,8 +175,8 @@ describe('Clusters milestone date editing', () => {
     await clickAndWaitForQueryClientsToSettle(within(row).getByTitle('Edit'));
 
     const form = getForm();
-    expect(getNamedElement<HTMLInputElement>(form, 'input[name="PO"]').value).toBe(
-      existing!.phases!.find((phase) => phase.phase === 'PO')!.date,
+    expect(getNamedElement<HTMLInputElement>(form, 'input[name="purchase"]').value).toBe(
+      existing!.phases!.find((phase) => phase.phase === 'purchase')!.date,
     );
     expect(form.querySelector('select[name="status"]')).toBeNull();
 
@@ -214,12 +217,12 @@ describe('Clusters milestone date editing', () => {
     await clickAndWaitForQueryClientsToSettle(within(row).getByTitle('Edit'));
 
     const form = getForm();
-    setPhaseDate(form, 'cpld', '2026-06-25');
+    setPhaseDate(form, 'cluster', '2026-06-25');
     await clickAndWaitForQueryClientsToSettle(within(form).getByRole('button', { name: 'Update' }));
 
     await waitFor(async () => {
       const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-      expect(updated?.phases?.find((phase) => phase.phase === 'cpld')?.date).toBe('2026-06-25');
+      expect(updated?.phases?.find((phase) => phase.phase === 'cluster')?.date).toBe('2026-06-25');
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
         date: '2026-06-04',
         status: 'blocked',
@@ -232,7 +235,7 @@ describe('Clusters milestone date editing', () => {
       within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'),
     );
     await waitFor(() => {
-      expect(getNamedElement<HTMLInputElement>(getForm(), 'input[name="cpld"]').value).toBe('2026-06-25');
+      expect(getNamedElement<HTMLInputElement>(getForm(), 'input[name="cluster"]').value).toBe('2026-06-25');
     });
     await waitForQueryClientsToSettle();
 
@@ -257,7 +260,7 @@ describe('Clusters milestone date editing', () => {
     expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
     expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="name"]').value).toBe('');
     expect(getNamedElement<HTMLSelectElement>(createForm, 'select[name="factory_id"]').value).toBe('');
-    expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="PO"]').value).toBe('');
+    expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="purchase"]').value).toBe('');
   });
 
   it('shows the create mutation error without leaking an unhandled rejection', async () => {
@@ -277,11 +280,12 @@ describe('Clusters milestone date editing', () => {
     fireEvent.change(getNamedElement<HTMLSelectElement>(form, 'select[name="type"]'), {
       target: { value: 'k8s' },
     });
-    setPhaseDate(form, 'PO', '2026-05-01');
-    setPhaseDate(form, 'server_movein', '2026-05-05');
+    setPhaseDate(form, 'purchase', '2026-05-01');
+    setPhaseDate(form, 'movein', '2026-05-05');
     setPhaseDate(form, 'infra', '2026-05-09');
-    setPhaseDate(form, 'cpld', '2026-05-12');
-    setPhaseDate(form, 'sipd', '2026-05-16');
+    setPhaseDate(form, 'cluster', '2026-05-12');
+    setPhaseDate(form, 'platform', '2026-05-16');
+    setPhaseDate(form, 'release', '2026-05-20');
 
     fireEvent.click(within(form).getByRole('button', { name: 'Create' }));
 

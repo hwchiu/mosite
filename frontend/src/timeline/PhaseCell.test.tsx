@@ -18,7 +18,7 @@ describe('PhaseCell solid rendering', () => {
   it('renders blocked phases as solid fills without dashed borders', () => {
     const { container } = render(
       <PhaseCell
-        cell={{ phases: ['server_movein'], status: 'blocked', isCurrentPhase: true }}
+        cell={{ phases: ['movein'], status: 'blocked', isCurrentPhase: true }}
       />,
     );
 
@@ -32,7 +32,7 @@ describe('PhaseCell solid rendering', () => {
   it('renders blocked non-current phases with a blocked title and no outline', () => {
     const { container } = render(
       <PhaseCell
-        cell={{ phases: ['server_movein'], status: 'blocked', isCurrentPhase: false }}
+        cell={{ phases: ['movein'], status: 'blocked', isCurrentPhase: false }}
       />,
     );
 

@@ -1,4 +1,4 @@
-export type ClusterStatus = 'PO' | 'server_movein' | 'infra' | 'cpld' | 'sipd';
+export type ClusterStatus = 'purchase' | 'movein' | 'infra' | 'cluster' | 'platform' | 'release';
 
 export type PhaseKey = ClusterStatus;
 

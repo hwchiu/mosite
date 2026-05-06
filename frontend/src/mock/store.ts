@@ -2,9 +2,9 @@ import type { Factory, Cluster, ClusterPhase, DashboardSummary, ClusterStatus, P
 import { deriveClusterStatus, isoWeekToDate, validatePhaseDates } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
-const LS_KEY = 'mosite_mock_db_v4';
-const LEGACY_LS_KEY = 'mosite_mock_db_v3';
-const PHASE_ORDER: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+const LS_KEY = 'mosite_mock_db_v5';
+const LEGACY_LS_KEY = 'mosite_mock_db_v4';
+const PHASE_ORDER: ClusterStatus[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
 const COMPATIBILITY_PHASE_GAP_DAYS = 14;
 
 interface MockDB {
@@ -162,7 +162,7 @@ function hydrateCluster(cluster: Cluster): Cluster {
   return {
     ...cluster,
     phases,
-    status: phases.length ? deriveClusterStatus(phases) : cluster.status ?? 'PO',
+    status: phases.length ? deriveClusterStatus(phases) : cluster.status ?? 'purchase',
   };
 }
 
@@ -374,7 +374,7 @@ export async function db_deleteCluster(id: string): Promise<void> {
 
 export async function db_getDashboardSummary(): Promise<DashboardSummary> {
   const clusters = getDB().clusters.map(hydrateCluster);
-  const statuses: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+  const statuses: ClusterStatus[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
   const status_counts = Object.fromEntries(
     statuses.map(s => [s, clusters.filter(c => c.status === s).length])
   ) as Record<ClusterStatus, number>;

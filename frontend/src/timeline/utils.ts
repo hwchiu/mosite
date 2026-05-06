@@ -159,7 +159,9 @@ export function resolveClusterCells(
 
   const normalize = (date: string) => (mode === 'month' ? dateToMonthKey(date) : dateToWeekKey(date));
   const sorted = [...phases].sort(comparePhasesBySchedule);
+  const todayKey = today.toISOString().slice(0, 10);
   const currentPhase = deriveClusterStatus(sorted, today);
+  const activePhase = todayKey > sorted[sorted.length - 1].date ? null : currentPhase;
 
   return columns.map((col) => {
     const matchingPhases: PhaseKey[] = [];
@@ -181,9 +183,9 @@ export function resolveClusterCells(
         const nextStatus =
           phase.status === 'blocked'
             ? 'blocked'
-            : phase.date > today.toISOString().slice(0, 10)
+            : phase.date > todayKey
               ? 'estimated'
-              : phase.phase === currentPhase
+              : phase.phase === activePhase
                 ? 'in_progress'
                 : 'completed';
         cellStatus =
@@ -192,7 +194,7 @@ export function resolveClusterCells(
             : cellStatus === 'in_progress' && nextStatus === 'estimated'
               ? cellStatus
               : nextStatus;
-        if (phase.phase === currentPhase) {
+        if (phase.phase === activePhase) {
           isCurrentPhase = true;
         }
       }

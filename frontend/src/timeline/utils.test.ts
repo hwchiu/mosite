@@ -171,6 +171,26 @@ describe('resolveClusterCells', () => {
     expect(cells[0].isCurrentPhase).toBe(true);
   });
 
+  it('does not mark a fully completed final phase as current', () => {
+    const completedPhases: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-04-20' },
+      { phase: 'server_movein', date: '2026-05-04' },
+    ];
+
+    const cells = resolveClusterCells(
+      completedPhases,
+      ['2026-W19'],
+      'week',
+      new Date('2026-05-12T00:00:00Z'),
+    );
+
+    expect(cells[0]).toEqual({
+      phases: ['server_movein'],
+      status: 'completed',
+      isCurrentPhase: false,
+    });
+  });
+
   it('returns empty cell for columns before any phase', () => {
     const cols = ['2026-W10'];
     const cells = resolveClusterCells(phases, cols, 'week');

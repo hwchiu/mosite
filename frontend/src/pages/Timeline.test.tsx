@@ -53,4 +53,15 @@ describe('Timeline month view timezone alignment', () => {
     fireEvent.click(screen.getByRole('button', { name: '今年' }));
     expect(screen.getByText('Jan')).toHaveClass('bg-indigo-50');
   });
+
+  it('does not show a dashed estimated legend entry', async () => {
+    renderTimeline();
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    expect(screen.queryByText('預估')).not.toBeInTheDocument();
+    expect(screen.getByText('藍色外框 = 當前 Phase')).toBeInTheDocument();
+  });
 });

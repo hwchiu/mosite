@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SEED_CLUSTERS } from '../mock/seed';
 import {
   parseISOWeek,
@@ -13,6 +13,7 @@ import {
   deriveClusterStatus,
   validatePhaseDates,
   resolveClusterCells,
+  currentISOWeek,
 } from './utils';
 import type { ClusterPhase } from '../types';
 
@@ -55,6 +56,29 @@ describe('buildWeekColumns', () => {
     for (let i = 1; i < cols.length; i++) {
       expect(compareWeeks(cols[i - 1], cols[i])).toBe(-1);
     }
+  });
+});
+
+describe('timezone alignment regression', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  it('keeps current-week helpers aligned with UTC date-driven helpers at a timezone boundary', () => {
+    vi.stubEnv('TZ', 'America/Los_Angeles');
+    const now = new Date('2026-01-05T00:30:00Z');
+    vi.setSystemTime(now);
+
+    const utcDate = now.toISOString().slice(0, 10);
+
+    expect(currentISOWeek()).toBe(dateToWeekKey(utcDate));
+    expect(buildWeekColumns(0, 1)).toEqual([dateToWeekKey(utcDate)]);
+    expect(weekToMonth(currentISOWeek())).toBe(dateToMonthKey(utcDate));
   });
 });
 

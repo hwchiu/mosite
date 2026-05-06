@@ -178,7 +178,11 @@ export function resolveClusterCells(
                 ? 'in_progress'
                 : 'completed';
         cellStatus =
-          cellStatus === 'in_progress' && nextStatus === 'estimated' ? cellStatus : nextStatus;
+          cellStatus === 'blocked' || nextStatus === 'blocked'
+            ? 'blocked'
+            : cellStatus === 'in_progress' && nextStatus === 'estimated'
+              ? cellStatus
+              : nextStatus;
         if (phase.phase === currentPhase) {
           isCurrentPhase = true;
         }

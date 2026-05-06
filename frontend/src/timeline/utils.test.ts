@@ -155,7 +155,7 @@ describe('resolveClusterCells', () => {
 
   it('detects current in-progress phase', () => {
     const cols = ['2026-W19'];
-    const cells = resolveClusterCells(phases, cols, 'week');
+    const cells = resolveClusterCells(phases, cols, 'week', new Date('2026-05-06T00:00:00Z'));
     expect(cells[0].isCurrentPhase).toBe(true);
   });
 
@@ -211,9 +211,27 @@ describe('resolveClusterCells', () => {
       { phase: 'server_movein', date: '2026-05-11', status: 'blocked' },
     ];
     const cols = ['2026-W18', '2026-W19', '2026-W20'];
-    const cells = resolveClusterCells(blockedPhases, cols, 'week');
+    const cells = resolveClusterCells(blockedPhases, cols, 'week', new Date('2026-05-06T00:00:00Z'));
     expect(cells[0].status).toBe('blocked');
     expect(cells[1].status).toBe('blocked');
     expect(cells[2].status).toBe('blocked');
+  });
+
+  it('keeps blocked status when month cells also include later estimated phases', () => {
+    const blockedPhases: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-04-20', status: 'completed' },
+      { phase: 'server_movein', date: '2026-05-05', status: 'blocked' },
+      { phase: 'infra', date: '2026-05-25', status: 'estimated' },
+    ];
+
+    const cells = resolveClusterCells(
+      blockedPhases,
+      ['2026-05'],
+      'month',
+      new Date('2026-05-06T00:00:00Z'),
+    );
+
+    expect(cells[0].phases).toEqual(['server_movein', 'infra']);
+    expect(cells[0].status).toBe('blocked');
   });
 });

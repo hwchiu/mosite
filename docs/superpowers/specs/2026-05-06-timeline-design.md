@@ -105,6 +105,13 @@ The timeline still renders spans from one milestone to the next, but those spans
 - The latest milestone whose date is on or before today becomes the cluster's derived current status
 - Milestones after today are treated as planned/estimated unless explicitly blocked
 
+### Timeline visual treatment
+
+- All non-empty timeline cells render as solid status cells.
+- `estimated` and `blocked` remain meaningful in data and derivation logic, but they no longer use dashed borders in the timeline.
+- Phase color remains the primary visual cue, and multi-phase same-column cells continue to use the existing solid gradient split.
+- The blue current-phase outline remains unchanged.
+
 ## UI Changes
 
 ### Timeline sidebar
@@ -123,6 +130,14 @@ In `WeekHeader`:
 
 - keep the current sticky header and current-week highlighting
 - change the rendered text from `W06`-style fragments to the business format `W6xx`
+
+### Timeline legend
+
+In the timeline legend:
+
+- remove the separate dashed `預估` sample
+- stop showing blocked as a dashed sample
+- keep the legend focused on solid phase colors plus the current-phase outline meaning
 
 ### Cluster editing
 

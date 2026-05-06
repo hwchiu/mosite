@@ -162,7 +162,15 @@ export default function Clusters() {
 
   const startEdit = (cluster: Cluster) => {
     setEditingId(cluster.id);
+    setShowCreate(false);
     setForm(formFromCluster(cluster));
+    setFormError('');
+  };
+
+  const startCreate = () => {
+    setEditingId(null);
+    setShowCreate(true);
+    setForm(emptyForm());
     setFormError('');
   };
 
@@ -180,7 +188,7 @@ export default function Clusters() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Clusters</h1>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={startCreate}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
         >
           <Plus size={16} /> Create Cluster

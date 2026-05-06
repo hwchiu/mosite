@@ -11,6 +11,17 @@ export function parseISOWeek(w: string): { year: number; week: number } {
   return { year: parseInt(yearStr), week: parseInt(weekStr) };
 }
 
+export const PHASE_ORDER: PhaseKey[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+
+function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
+  const dateComparison = a.date.localeCompare(b.date);
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  return PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase);
+}
+
 export function compareWeeks(a: string, b: string): -1 | 0 | 1 {
   const pa = parseISOWeek(a);
   const pb = parseISOWeek(b);
@@ -28,45 +39,84 @@ export function compareColumns(a: string, b: string): -1 | 0 | 1 {
 }
 
 export function weekToMonth(w: string): string {
-  // Find Thursday of ISO week (defines the year/month), then return its YYYY-MM
-  const { year, week } = parseISOWeek(w);
-  // Jan 4 is always in week 1
-  const jan4 = new Date(year, 0, 4);
-  const dayOfWeek = jan4.getDay() || 7; // Mon=1..Sun=7
-  const monday = new Date(jan4);
-  monday.setDate(jan4.getDate() - (dayOfWeek - 1) + (week - 1) * 7);
-  // Use Thursday (Monday + 3 days) to determine the month
-  const thursday = new Date(monday);
-  thursday.setDate(monday.getDate() + 3);
-  const m = String(thursday.getMonth() + 1).padStart(2, '0');
-  return `${thursday.getFullYear()}-${m}`;
+  return isoWeekToUTCThursday(w).toISOString().slice(0, 7);
 }
 
-export function currentISOWeek(): string {
-  const now = new Date();
-  // ISO week: Thursday determines the year
-  const thu = new Date(now);
-  thu.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 3);
-  const year = thu.getFullYear();
-  const jan4 = new Date(year, 0, 4);
-  const week = Math.round(((thu.getTime() - jan4.getTime()) / 86400000 + ((jan4.getDay() + 6) % 7) - 3) / 7) + 1;
+export function isoWeekToDate(isoWeek: string): string {
+  return isoWeekToUTCThursday(isoWeek).toISOString().slice(0, 10);
+}
+
+export function dateToWeekKey(date: string): string {
+  const source = new Date(`${date}T00:00:00Z`);
+  const thursday = new Date(source);
+  thursday.setUTCDate(source.getUTCDate() - ((source.getUTCDay() + 6) % 7) + 3);
+  const year = thursday.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const week =
+    Math.round(
+      ((thursday.getTime() - jan4.getTime()) / 86400000 + ((jan4.getUTCDay() + 6) % 7) - 3) / 7,
+    ) + 1;
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
-function addWeeks(isoWeek: string, delta: number): string {
+export function dateToMonthKey(date: string): string {
+  return date.slice(0, 7);
+}
+
+function isoWeekToUTCThursday(isoWeek: string): Date {
   const { year, week } = parseISOWeek(isoWeek);
-  const jan4 = new Date(year, 0, 4);
-  const dayOfWeek = jan4.getDay() || 7;
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7; // Mon=1..Sun=7
   const monday = new Date(jan4);
-  monday.setDate(jan4.getDate() - (dayOfWeek - 1) + (week - 1) * 7);
-  monday.setDate(monday.getDate() + delta * 7);
-  // Compute ISO week of the resulting date
-  const thu = new Date(monday);
-  thu.setDate(monday.getDate() + 3);
-  const newYear = thu.getFullYear();
-  const newJan4 = new Date(newYear, 0, 4);
-  const newWeek = Math.round(((thu.getTime() - newJan4.getTime()) / 86400000 + ((newJan4.getDay() + 6) % 7) - 3) / 7) + 1;
-  return `${newYear}-W${String(newWeek).padStart(2, '0')}`;
+  monday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1) + (week - 1) * 7);
+  const thursday = new Date(monday);
+  thursday.setUTCDate(monday.getUTCDate() + 3);
+  return thursday;
+}
+
+export function formatBusinessWeekLabel(weekKey: string): string {
+  const { year, week } = parseISOWeek(weekKey);
+  return `W${String(year).slice(-1)}${String(week).padStart(2, '0')}`;
+}
+
+export function deriveClusterStatus(phases: ClusterPhase[], today = new Date()): PhaseKey {
+  const todayKey = today.toISOString().slice(0, 10);
+  const sorted = [...phases].sort(comparePhasesBySchedule);
+  const current = [...sorted].reverse().find((phase) => phase.date <= todayKey) ?? sorted[0];
+  return current?.phase ?? 'PO';
+}
+
+function formatPhaseName(phase: PhaseKey): string {
+  if (phase === 'PO') return 'PO';
+  if (phase === 'server_movein') return 'Move-In';
+  return phase.toUpperCase();
+}
+
+export function validatePhaseDates(phases: ClusterPhase[]): Partial<Record<PhaseKey, string>> {
+  const errors: Partial<Record<PhaseKey, string>> = {};
+  const sorted = [...phases].sort(
+    (a, b) => PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase),
+  );
+
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].date < sorted[i - 1].date) {
+      errors[sorted[i].phase] =
+        `${formatPhaseName(sorted[i].phase)} date must be on or after ` +
+        `${formatPhaseName(sorted[i - 1].phase)} date.`;
+    }
+  }
+
+  return errors;
+}
+
+export function currentISOWeek(): string {
+  return dateToWeekKey(new Date().toISOString().slice(0, 10));
+}
+
+function addWeeks(isoWeek: string, delta: number): string {
+  const thursday = isoWeekToUTCThursday(isoWeek);
+  thursday.setUTCDate(thursday.getUTCDate() + delta * 7);
+  return dateToWeekKey(thursday.toISOString().slice(0, 10));
 }
 
 export function buildWeekColumns(offsetStart: number, count: number): string[] {
@@ -87,42 +137,53 @@ export function buildMonthColumns(year: number): string[] {
 export function resolveClusterCells(
   phases: ClusterPhase[],
   columns: string[],
-  mode: 'week' | 'month'
+  mode: 'week' | 'month',
+  today = new Date(),
 ): ResolvedPhaseCell[] {
   if (!phases.length) {
     return columns.map(() => ({ phases: [], status: 'empty', isCurrentPhase: false }));
   }
 
-  // Normalize completion keys to the current mode
-  const normalize = (w: string) => mode === 'month' ? weekToMonth(w) : w;
+  const normalize = (date: string) => (mode === 'month' ? dateToMonthKey(date) : dateToWeekKey(date));
+  const sorted = [...phases].sort(comparePhasesBySchedule);
+  const todayKey = today.toISOString().slice(0, 10);
+  const currentPhase = deriveClusterStatus(sorted, today);
+  const finalPhase = sorted[sorted.length - 1];
+  const activePhase =
+    todayKey > finalPhase.date && finalPhase.status !== 'blocked' ? null : currentPhase;
 
-  // Find current in-progress phase key
-  const currentPhase = phases.find(p => p.status === 'in_progress' || p.status === 'blocked');
-
-  return columns.map(col => {
+  return columns.map((col) => {
     const matchingPhases: PhaseKey[] = [];
     let cellStatus: PhaseStatus | 'empty' = 'empty';
     let isCurrentPhase = false;
 
-    for (let i = 0; i < phases.length; i++) {
-      const p = phases[i];
-      const pCol = normalize(p.completionWeek);
-
-      let covered = false;
-      if (i === 0) {
-        covered = col === pCol;
-      } else {
-        const prevCol = normalize(phases[i - 1].completionWeek);
-        // col > prevCol AND col <= pCol
-        // Special case: if prevCol === pCol (same-week completion), also include this column
-        covered = (compareColumns(prevCol, col) < 0 && compareColumns(col, pCol) <= 0) ||
-                  (col === pCol && compareColumns(prevCol, pCol) === 0);
-      }
+    for (let i = 0; i < sorted.length; i++) {
+      const phase = sorted[i];
+      const phaseColumn = normalize(phase.date);
+      const prevColumn = i === 0 ? null : normalize(sorted[i - 1].date);
+      const covered =
+        i === 0
+          ? col === phaseColumn
+          : (compareColumns(prevColumn!, col) < 0 && compareColumns(col, phaseColumn) <= 0) ||
+            (col === phaseColumn && prevColumn === phaseColumn);
 
       if (covered) {
-        matchingPhases.push(p.phase);
-        cellStatus = p.status;
-        if (currentPhase && p.phase === currentPhase.phase) {
+        matchingPhases.push(phase.phase);
+        const nextStatus =
+          phase.status === 'blocked'
+            ? 'blocked'
+            : phase.date > todayKey
+              ? 'estimated'
+              : phase.phase === activePhase
+                ? 'in_progress'
+                : 'completed';
+        cellStatus =
+          cellStatus === 'blocked' || nextStatus === 'blocked'
+            ? 'blocked'
+            : cellStatus === 'in_progress' && nextStatus === 'estimated'
+              ? cellStatus
+              : nextStatus;
+        if (phase.phase === activePhase) {
           isCurrentPhase = true;
         }
       }

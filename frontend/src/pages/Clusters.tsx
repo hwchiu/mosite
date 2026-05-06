@@ -4,7 +4,8 @@ import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { listClusters, createCluster, updateCluster, deleteCluster } from '../api/clusters';
 import { listFactories } from '../api/factories';
-import type { ClusterType, ClusterStatus, Cluster } from '../types';
+import { PHASE_ORDER, validatePhaseDates } from '../timeline/utils';
+import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey } from '../types';
 
 const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
   PO:           { label: 'PO',            bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
@@ -14,16 +15,75 @@ const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: st
   sipd:         { label: 'SIPD',          bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
 };
 
-const STATUS_OPTIONS: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+const PHASE_LABELS: Record<PhaseKey, string> = {
+  PO: 'PO',
+  server_movein: 'Move-In',
+  infra: 'Infra',
+  cpld: 'CPLD',
+  sipd: 'SIPD',
+};
+
+type PhaseForm = Record<PhaseKey, string>;
+
+const emptyPhases = (): PhaseForm => ({
+  PO: '',
+  server_movein: '',
+  infra: '',
+  cpld: '',
+  sipd: '',
+});
 
 interface ClusterForm {
   name: string;
   type: ClusterType | '';
   factory_id: string;
-  status: ClusterStatus | '';
+  phases: PhaseForm;
 }
 
-const emptyForm: ClusterForm = { name: '', type: '', factory_id: '', status: '' };
+const emptyForm = (): ClusterForm => ({
+  name: '',
+  type: '',
+  factory_id: '',
+  phases: emptyPhases(),
+});
+
+function toPhasePayload(phases: PhaseForm, existingPhases: ClusterPhase[] = []): ClusterPhase[] {
+  const existingByPhase = new Map(existingPhases.map((phase) => [phase.phase, phase] as const));
+
+  return PHASE_ORDER.map((phase) => ({
+    ...existingByPhase.get(phase),
+    phase,
+    date: phases[phase],
+  }));
+}
+
+function validateForm(form: ClusterForm): string {
+  if (!form.name.trim()) return 'Name is required';
+  if (!form.type) return 'Type is required';
+  if (!form.factory_id) return 'Factory is required';
+
+  for (const phase of PHASE_ORDER) {
+    if (!form.phases[phase]) {
+      return `${PHASE_LABELS[phase]} date is required`;
+    }
+  }
+
+  return Object.values(validatePhaseDates(toPhasePayload(form.phases)))[0] ?? '';
+}
+
+function formFromCluster(cluster: Cluster): ClusterForm {
+  const phases = emptyPhases();
+  cluster.phases?.forEach((phase) => {
+    phases[phase.phase] = phase.date;
+  });
+
+  return {
+    name: cluster.name,
+    type: cluster.type,
+    factory_id: cluster.factory_id,
+    phases,
+  };
+}
 
 export default function Clusters() {
   const queryClient = useQueryClient();
@@ -38,10 +98,10 @@ export default function Clusters() {
 
   const createMut = useMutation({
     mutationFn: createCluster,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
       setShowCreate(false);
-      setForm(emptyForm);
+      setForm(emptyForm());
       setFormError('');
     },
     onError: (err: Error) => setFormError(err.message),
@@ -49,10 +109,10 @@ export default function Clusters() {
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Cluster> }) => updateCluster(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
       setEditingId(null);
-      setForm(emptyForm);
+      setForm(emptyForm());
       setFormError('');
     },
     onError: (err: Error) => setFormError(err.message),
@@ -66,54 +126,65 @@ export default function Clusters() {
     },
   });
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return setFormError('Name is required');
-    if (!form.type) return setFormError('Type is required');
-    if (!form.factory_id) return setFormError('Factory is required');
-    if (!form.status) return setFormError('Status is required');
-    setFormError('');
-    createMut.mutate({
-      name: form.name.trim(),
-      type: form.type as ClusterType,
-      factory_id: form.factory_id,
-      status: form.status as ClusterStatus,
-    });
-  };
+    const error = validateForm(form);
+    if (error) return setFormError(error);
 
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId) return;
-    if (!form.name.trim()) return setFormError('Name is required');
-    if (!form.type) return setFormError('Type is required');
-    if (!form.factory_id) return setFormError('Factory is required');
-    if (!form.status) return setFormError('Status is required');
     setFormError('');
-    updateMut.mutate({
-      id: editingId,
-      data: {
+    try {
+      await createMut.mutateAsync({
         name: form.name.trim(),
         type: form.type as ClusterType,
         factory_id: form.factory_id,
-        status: form.status as ClusterStatus,
-      },
-    });
+        phases: toPhasePayload(form.phases),
+      });
+    } catch {
+      // onError surfaces the validation message for the form.
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    const error = validateForm(form);
+    if (error) return setFormError(error);
+
+    const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.phases ?? [];
+
+    setFormError('');
+    try {
+      await updateMut.mutateAsync({
+        id: editingId,
+        data: {
+          name: form.name.trim(),
+          type: form.type as ClusterType,
+          factory_id: form.factory_id,
+          phases: toPhasePayload(form.phases, existingPhases),
+        },
+      });
+    } catch {
+      // onError surfaces the validation message for the form.
+    }
   };
 
   const startEdit = (cluster: Cluster) => {
     setEditingId(cluster.id);
-    setForm({
-      name: cluster.name,
-      type: cluster.type,
-      factory_id: cluster.factory_id,
-      status: cluster.status || 'PO',
-    });
+    setShowCreate(false);
+    setForm(formFromCluster(cluster));
+    setFormError('');
+  };
+
+  const startCreate = () => {
+    setEditingId(null);
+    setShowCreate(true);
+    setForm(emptyForm());
     setFormError('');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm(emptyForm());
     setFormError('');
   };
 
@@ -125,7 +196,7 @@ export default function Clusters() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Clusters</h1>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={startCreate}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
         >
           <Plus size={16} /> Create Cluster
@@ -159,6 +230,7 @@ export default function Clusters() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Factory</label>
                 <select
+                  name="factory_id"
                   value={form.factory_id}
                   onChange={(e) => setForm({ ...form, factory_id: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -175,6 +247,7 @@ export default function Clusters() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input
+                  name="name"
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -186,6 +259,7 @@ export default function Clusters() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                 <select
+                  name="type"
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value as ClusterType })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -196,21 +270,33 @@ export default function Clusters() {
                   <option value="vm">vm</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as ClusterStatus })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  required
-                >
-                  <option value="">Select Status</option>
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_CONFIG[s].label}
-                    </option>
-                  ))}
-                </select>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Milestone Dates</h3>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                {PHASE_ORDER.map((phase) => (
+                  <div key={phase}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {PHASE_LABELS[phase]} Date
+                    </label>
+                    <input
+                      name={phase}
+                      type="date"
+                      value={form.phases[phase]}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          phases: {
+                            ...form.phases,
+                            [phase]: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+                ))}
               </div>
             </div>
             <div className="flex gap-2 justify-end">

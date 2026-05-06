@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Clusters from './Clusters';
 import { resetDB } from '../mock/store';
 import { listClusters } from '../api/clusters';
 import type { PhaseKey } from '../types';
+
+const queryClients: QueryClient[] = [];
 
 function renderClusters() {
   const queryClient = new QueryClient({
@@ -14,6 +16,7 @@ function renderClusters() {
       },
     },
   });
+  queryClients.push(queryClient);
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -43,10 +46,28 @@ function setPhaseDate(form: HTMLFormElement, phase: PhaseKey, value: string) {
   });
 }
 
+async function waitForEditFormToClose() {
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+  });
+}
+
 describe('Clusters milestone date editing', () => {
   beforeEach(() => {
     localStorage.clear();
     resetDB();
+  });
+
+  afterEach(async () => {
+    for (const queryClient of queryClients) {
+      await waitFor(() => {
+        expect(queryClient.isMutating()).toBe(0);
+        expect(queryClient.isFetching()).toBe(0);
+      });
+      queryClient.clear();
+    }
+    queryClients.length = 0;
+    vi.restoreAllMocks();
   });
 
   it('creates a cluster from milestone dates instead of a manual status selection', async () => {
@@ -118,6 +139,7 @@ describe('Clusters milestone date editing', () => {
   });
 
   it('edits an existing cluster using milestone date inputs', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderClusters();
 
     const clusterName = 'F1-K8S-Prod';
@@ -140,9 +162,22 @@ describe('Clusters milestone date editing', () => {
       const updated = (await listClusters()).find((cluster) => cluster.name === clusterName);
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
+    await waitForEditFormToClose();
+
+    fireEvent.click(within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'));
+    await waitFor(() => {
+      expect(getNamedElement<HTMLInputElement>(getForm(), 'input[name="infra"]').value).toBe('2026-03-15');
+    });
+
+    expect(consoleError.mock.calls).not.toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([expect.stringContaining('not wrapped in act')]),
+      ]),
+    );
   });
 
   it('preserves blocked milestone metadata when editing dates', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderClusters();
 
     const clusterName = 'F2-K8S-Prod';
@@ -170,6 +205,18 @@ describe('Clusters milestone date editing', () => {
         note: '機器延遲到貨，預計 W23 恢復',
       });
     });
+    await waitForEditFormToClose();
+
+    fireEvent.click(within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'));
+    await waitFor(() => {
+      expect(getNamedElement<HTMLInputElement>(getForm(), 'input[name="cpld"]').value).toBe('2026-06-25');
+    });
+
+    expect(consoleError.mock.calls).not.toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([expect.stringContaining('not wrapped in act')]),
+      ]),
+    );
   });
 
   it('switches from editing to a blank create form when Create Cluster is clicked', async () => {

@@ -9,9 +9,10 @@ interface Props {
   mode: 'week' | 'month';
   nowColumn: string;
   defaultExpanded?: boolean;
+  onEdit?: (cluster: Cluster) => void;
 }
 
-export default function FactoryGroup({ factory, clusters, columns, mode, nowColumn, defaultExpanded = true }: Props) {
+export default function FactoryGroup({ factory, clusters, columns, mode, nowColumn, defaultExpanded = true, onEdit }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const hasBlocked = clusters.some(c =>
@@ -26,11 +27,12 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
   }, {} as Record<string, number>);
 
   const PHASE_EMOJI: Record<string, string> = {
-    PO: '🛒',
-    server_movein: '📦',
-    infra: '⚙️',
-    cpld: '🔧',
-    sipd: '🟢',
+    purchase: '🛒',
+    movein:   '📦',
+    infra:    '⚙️',
+    cluster:  '🔧',
+    platform: '🟣',
+    release:  '🟢',
   };
 
   return (
@@ -53,7 +55,7 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
         <div className="flex gap-2 px-2 flex-wrap">
           {Object.entries(phaseSummary).map(([phase, count]) => (
             <span key={phase} className="text-[9px] text-gray-500">
-              {PHASE_EMOJI[phase] ?? '•'} {phase.replace('server_movein', 'Server Move-In')}×{count}
+              {PHASE_EMOJI[phase] ?? '•'} {phase}×{count}
             </span>
           ))}
         </div>
@@ -67,6 +69,7 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
           columns={columns}
           mode={mode}
           nowColumn={nowColumn}
+          onEdit={onEdit}
         />
       ))}
     </div>

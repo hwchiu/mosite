@@ -127,7 +127,7 @@ describe('date-derived schedule helpers', () => {
       throw new Error('Expected boundary seed cluster c4 to include phases');
     }
 
-    const boundaryPhase = boundaryCluster.phases.find((phase) => phase.phase === 'PO');
+    const boundaryPhase = boundaryCluster.phases.find((phase) => phase.phase === 'purchase');
     if (!boundaryPhase) {
       throw new Error('Expected boundary seed cluster c4 to include a PO phase');
     }
@@ -140,45 +140,45 @@ describe('date-derived schedule helpers', () => {
 
   it('derives the current cluster status from milestone dates', () => {
     const phases: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-05-01' },
-      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'purchase', date: '2026-05-01' },
+      { phase: 'movein', date: '2026-05-05' },
       { phase: 'infra', date: '2026-05-09' },
     ];
 
-    expect(deriveClusterStatus(phases, new Date('2026-05-06T00:00:00Z'))).toBe('server_movein');
+    expect(deriveClusterStatus(phases, new Date('2026-05-06T00:00:00Z'))).toBe('movein');
   });
 
   it('uses PHASE_ORDER to break same-day ties for current status', () => {
     const sameDayPhases: ClusterPhase[] = [
-      { phase: 'server_movein', date: '2026-05-05' },
-      { phase: 'PO', date: '2026-05-05' },
+      { phase: 'movein', date: '2026-05-05' },
+      { phase: 'purchase', date: '2026-05-05' },
       { phase: 'infra', date: '2026-05-09' },
     ];
 
     expect(deriveClusterStatus(sameDayPhases, new Date('2026-05-06T00:00:00Z'))).toBe(
-      'server_movein',
+      'movein',
     );
   });
 
   it('returns field errors when a milestone moves backward', () => {
     const phases: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-05-06' },
-      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'purchase', date: '2026-05-06' },
+      { phase: 'movein', date: '2026-05-05' },
     ];
 
     expect(validatePhaseDates(phases)).toEqual({
-      server_movein: 'Move-In date must be on or after PO date.',
+      movein: 'Move-In date must be on or after Purchase date.',
     });
   });
 
   it('validates milestone order even when phases are unsorted', () => {
     const phases: ClusterPhase[] = [
-      { phase: 'server_movein', date: '2026-05-05' },
-      { phase: 'PO', date: '2026-05-06' },
+      { phase: 'movein', date: '2026-05-05' },
+      { phase: 'purchase', date: '2026-05-06' },
     ];
 
     expect(validatePhaseDates(phases)).toEqual({
-      server_movein: 'Move-In date must be on or after PO date.',
+      movein: 'Move-In date must be on or after Purchase date.',
     });
   });
 });
@@ -186,8 +186,8 @@ describe('date-derived schedule helpers', () => {
 
 describe('resolveClusterCells', () => {
   const phases: ClusterPhase[] = [
-    { phase: 'PO', date: '2026-04-20', status: 'completed' },
-    { phase: 'server_movein', date: '2026-05-04', status: 'in_progress' },
+    { phase: 'purchase', date: '2026-04-20', status: 'completed' },
+    { phase: 'movein', date: '2026-05-04', status: 'in_progress' },
     { phase: 'infra', date: '2026-05-25', status: 'estimated' },
   ];
 
@@ -200,12 +200,12 @@ describe('resolveClusterCells', () => {
   it('marks the cell of completion week with that phase', () => {
     const cols = ['2026-W17', '2026-W18', '2026-W19', '2026-W20'];
     const cells = resolveClusterCells(phases, cols, 'week');
-    // W17 = PO completion
-    expect(cells[0].phases).toContain('PO');
-    // W18 = span of server_movein (W17 < W18 <= W19)
-    expect(cells[1].phases).toContain('server_movein');
-    // W19 = server_movein completion
-    expect(cells[2].phases).toContain('server_movein');
+    // W17 = purchase completion
+    expect(cells[0].phases).toContain('purchase');
+    // W18 = span of movein (W17 < W18 <= W19)
+    expect(cells[1].phases).toContain('movein');
+    // W19 = movein completion
+    expect(cells[2].phases).toContain('movein');
     // W20 = span of infra (W19 < W20 <= W22)
     expect(cells[3].phases).toContain('infra');
   });
@@ -218,8 +218,8 @@ describe('resolveClusterCells', () => {
 
   it('does not mark a fully completed final phase as current', () => {
     const completedPhases: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-04-20' },
-      { phase: 'server_movein', date: '2026-05-04' },
+      { phase: 'purchase', date: '2026-04-20' },
+      { phase: 'movein', date: '2026-05-04' },
     ];
 
     const cells = resolveClusterCells(
@@ -230,7 +230,7 @@ describe('resolveClusterCells', () => {
     );
 
     expect(cells[0]).toEqual({
-      phases: ['server_movein'],
+      phases: ['movein'],
       status: 'completed',
       isCurrentPhase: false,
     });
@@ -238,8 +238,8 @@ describe('resolveClusterCells', () => {
 
   it('keeps overdue blocked final phases marked as current', () => {
     const blockedPhases: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-04-20', status: 'completed' },
-      { phase: 'server_movein', date: '2026-05-05', status: 'blocked' },
+      { phase: 'purchase', date: '2026-04-20', status: 'completed' },
+      { phase: 'movein', date: '2026-05-05', status: 'blocked' },
     ];
 
     const cells = resolveClusterCells(
@@ -250,7 +250,7 @@ describe('resolveClusterCells', () => {
     );
 
     expect(cells[0]).toEqual({
-      phases: ['server_movein'],
+      phases: ['movein'],
       status: 'blocked',
       isCurrentPhase: true,
     });
@@ -264,19 +264,19 @@ describe('resolveClusterCells', () => {
 
   it('handles same-week multi-phase (B1 gradient scenario)', () => {
     const samePhasesWeek: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-04-13', status: 'completed' },
-      { phase: 'server_movein', date: '2026-04-14', status: 'completed' },
+      { phase: 'purchase', date: '2026-04-13', status: 'completed' },
+      { phase: 'movein', date: '2026-04-14', status: 'completed' },
       { phase: 'infra', date: '2026-05-04', status: 'in_progress' },
     ];
     const cols = ['2026-W16'];
     const cells = resolveClusterCells(samePhasesWeek, cols, 'week');
-    expect(cells[0].phases).toEqual(['PO', 'server_movein']);
+    expect(cells[0].phases).toEqual(['purchase', 'movein']);
   });
 
   it('keeps current phase marker for multi-phase cells', () => {
     const samePhasesWeek: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-04-13' },
-      { phase: 'server_movein', date: '2026-04-14' },
+      { phase: 'purchase', date: '2026-04-13' },
+      { phase: 'movein', date: '2026-04-14' },
     ];
 
     const cells = resolveClusterCells(
@@ -292,8 +292,8 @@ describe('resolveClusterCells', () => {
 
   it('normalizes same-day cells by PHASE_ORDER regardless of input order', () => {
     const sameDayPhases: ClusterPhase[] = [
-      { phase: 'server_movein', date: '2026-05-05' },
-      { phase: 'PO', date: '2026-05-05' },
+      { phase: 'movein', date: '2026-05-05' },
+      { phase: 'purchase', date: '2026-05-05' },
       { phase: 'infra', date: '2026-05-19' },
     ];
 
@@ -305,7 +305,7 @@ describe('resolveClusterCells', () => {
     );
 
     expect(cells[0]).toEqual({
-      phases: ['PO', 'server_movein'],
+      phases: ['purchase', 'movein'],
       status: 'in_progress',
       isCurrentPhase: true,
     });
@@ -313,8 +313,8 @@ describe('resolveClusterCells', () => {
 
   it('keeps same-day highlighting stable when input order changes in month mode', () => {
     const ordered: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-05-05' },
-      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'purchase', date: '2026-05-05' },
+      { phase: 'movein', date: '2026-05-05' },
       { phase: 'infra', date: '2026-05-19' },
     ];
     const reversed = [...ordered].reverse();
@@ -328,20 +328,20 @@ describe('resolveClusterCells', () => {
 
   it('maps weeks to months in month mode', () => {
     // W17 is April 2026; W19 is May 2026.
-    // In May column only server_movein (W19) should appear;
-    // PO (W17=April) lands in '2026-04', not '2026-05'.
+    // In May column only movein (W19) should appear;
+    // purchase (W17=April) lands in '2026-04', not '2026-05'.
     const cols = ['2026-04', '2026-05'];
     const cells = resolveClusterCells(phases, cols, 'month');
-    expect(cells[0].phases).toContain('PO');   // W17 → April
-    expect(cells[0].phases).not.toContain('server_movein');
-    expect(cells[1].phases).toContain('server_movein'); // W19 → May
-    expect(cells[1].phases).not.toContain('PO');
+    expect(cells[0].phases).toContain('purchase');   // W17 → April
+    expect(cells[0].phases).not.toContain('movein');
+    expect(cells[1].phases).toContain('movein'); // W19 → May
+    expect(cells[1].phases).not.toContain('purchase');
   });
 
   it('uses blocked status for blocked phases', () => {
     const blockedPhases: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-04-20', status: 'completed' },
-      { phase: 'server_movein', date: '2026-05-11', status: 'blocked' },
+      { phase: 'purchase', date: '2026-04-20', status: 'completed' },
+      { phase: 'movein', date: '2026-05-11', status: 'blocked' },
     ];
     const cols = ['2026-W18', '2026-W19', '2026-W20'];
     const cells = resolveClusterCells(blockedPhases, cols, 'week', new Date('2026-05-06T00:00:00Z'));
@@ -352,8 +352,8 @@ describe('resolveClusterCells', () => {
 
   it('keeps blocked status when month cells also include later estimated phases', () => {
     const blockedPhases: ClusterPhase[] = [
-      { phase: 'PO', date: '2026-04-20', status: 'completed' },
-      { phase: 'server_movein', date: '2026-05-05', status: 'blocked' },
+      { phase: 'purchase', date: '2026-04-20', status: 'completed' },
+      { phase: 'movein', date: '2026-05-05', status: 'blocked' },
       { phase: 'infra', date: '2026-05-25', status: 'estimated' },
     ];
 
@@ -364,7 +364,7 @@ describe('resolveClusterCells', () => {
       new Date('2026-05-06T00:00:00Z'),
     );
 
-    expect(cells[0].phases).toEqual(['server_movein', 'infra']);
+    expect(cells[0].phases).toEqual(['movein', 'infra']);
     expect(cells[0].status).toBe('blocked');
   });
 });

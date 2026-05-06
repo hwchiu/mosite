@@ -11,7 +11,7 @@ export function parseISOWeek(w: string): { year: number; week: number } {
   return { year: parseInt(yearStr), week: parseInt(weekStr) };
 }
 
-export const PHASE_ORDER: PhaseKey[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+export const PHASE_ORDER: PhaseKey[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
 
 function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
   const dateComparison = a.date.localeCompare(b.date);
@@ -83,13 +83,15 @@ export function deriveClusterStatus(phases: ClusterPhase[], today = new Date()):
   const todayKey = today.toISOString().slice(0, 10);
   const sorted = [...phases].sort(comparePhasesBySchedule);
   const current = [...sorted].reverse().find((phase) => phase.date <= todayKey) ?? sorted[0];
-  return current?.phase ?? 'PO';
+  return current?.phase ?? 'purchase';
 }
 
 function formatPhaseName(phase: PhaseKey): string {
-  if (phase === 'PO') return 'PO';
-  if (phase === 'server_movein') return 'Move-In';
-  return phase.toUpperCase();
+  const labels: Record<PhaseKey, string> = {
+    purchase: 'Purchase', movein: 'Move-In', infra: 'Infra',
+    cluster: 'Cluster', platform: 'Platform', release: 'Release',
+  };
+  return labels[phase] ?? phase;
 }
 
 export function validatePhaseDates(phases: ClusterPhase[]): Partial<Record<PhaseKey, string>> {

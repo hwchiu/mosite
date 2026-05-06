@@ -2,11 +2,12 @@ import type { PhaseKey } from '../types';
 import type { ResolvedPhaseCell } from './utils';
 
 const PHASE_COLORS: Record<PhaseKey, string> = {
-  PO:            '#94a3b8',  // slate-400
-  server_movein: '#f59e0b',  // amber-500
-  infra:         '#6366f1',  // indigo-500
-  cpld:          '#8b5cf6',  // violet-500
-  sipd:          '#10b981',  // emerald-500
+  purchase: '#94a3b8',  // slate-400
+  movein:   '#f59e0b',  // amber-500
+  infra:    '#6366f1',  // indigo-500
+  cluster:  '#3b82f6',  // blue-500
+  platform: '#8b5cf6',  // violet-500
+  release:  '#10b981',  // emerald-500
 };
 
 function buildGradient(phases: PhaseKey[]): string {

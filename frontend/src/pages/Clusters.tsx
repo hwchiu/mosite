@@ -8,29 +8,32 @@ import { PHASE_ORDER, validatePhaseDates } from '../timeline/utils';
 import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey } from '../types';
 
 const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
-  PO:           { label: 'PO',            bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
-  server_movein:{ label: 'Server Move-In', bg: 'bg-amber-50',  text: 'text-amber-700',   border: 'border-amber-200',   dotColor: '#f59e0b' },
-  infra:        { label: 'Infra',         bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dotColor: '#6366f1' },
-  cpld:         { label: 'CPLD',          bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dotColor: '#8b5cf6' },
-  sipd:         { label: 'SIPD',          bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
+  purchase: { label: 'Purchase', bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
+  movein:   { label: 'Move-In',  bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dotColor: '#f59e0b' },
+  infra:    { label: 'Infra',    bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dotColor: '#6366f1' },
+  cluster:  { label: 'Cluster',  bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200',    dotColor: '#3b82f6' },
+  platform: { label: 'Platform', bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dotColor: '#8b5cf6' },
+  release:  { label: 'Release',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
 };
 
 const PHASE_LABELS: Record<PhaseKey, string> = {
-  PO: 'PO',
-  server_movein: 'Move-In',
-  infra: 'Infra',
-  cpld: 'CPLD',
-  sipd: 'SIPD',
+  purchase: 'Purchase',
+  movein:   'Move-In',
+  infra:    'Infra',
+  cluster:  'Cluster',
+  platform: 'Platform',
+  release:  'Release',
 };
 
 type PhaseForm = Record<PhaseKey, string>;
 
 const emptyPhases = (): PhaseForm => ({
-  PO: '',
-  server_movein: '',
-  infra: '',
-  cpld: '',
-  sipd: '',
+  purchase: '',
+  movein:   '',
+  infra:    '',
+  cluster:  '',
+  platform: '',
+  release:  '',
 });
 
 interface ClusterForm {
@@ -297,7 +300,7 @@ export default function Clusters() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-3">Milestone Dates</h3>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
                 {PHASE_ORDER.map((phase) => (
                   <div key={phase}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -427,7 +430,7 @@ export default function Clusters() {
                   </tr>
                 ) : (
                 filteredClusters.map((cluster) => {
-                    const status = cluster.status ?? 'PO';
+                    const status = cluster.status ?? 'purchase';
                     const config = STATUS_CONFIG[status];
                     return (
                       <tr key={cluster.id} className="hover:bg-gray-50 transition-colors">

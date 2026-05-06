@@ -5,14 +5,15 @@ import { listClusters } from '../api/clusters';
 import type { ClusterStatus } from '../types';
 
 const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
-  PO:           { label: 'PO',            bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
-  server_movein:{ label: 'Server Move-In', bg: 'bg-amber-50',  text: 'text-amber-700',   border: 'border-amber-200',   dotColor: '#f59e0b' },
-  infra:        { label: 'Infra',         bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dotColor: '#6366f1' },
-  cpld:         { label: 'CPLD',          bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dotColor: '#8b5cf6' },
-  sipd:         { label: 'SIPD',          bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
+  purchase: { label: 'Purchase', bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
+  movein:   { label: 'Move-In',  bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dotColor: '#f59e0b' },
+  infra:    { label: 'Infra',    bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dotColor: '#6366f1' },
+  cluster:  { label: 'Cluster',  bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200',    dotColor: '#3b82f6' },
+  platform: { label: 'Platform', bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dotColor: '#8b5cf6' },
+  release:  { label: 'Release',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dotColor: '#10b981' },
 };
 
-const CLUSTER_STATUSES: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+const CLUSTER_STATUSES: ClusterStatus[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
 
 export default function Dashboard() {
   const summaryQ = useQuery({ queryKey: ['dashboard-summary'], queryFn: getSummary });
@@ -30,8 +31,8 @@ export default function Dashboard() {
         <p className="text-sm text-gray-500 mt-1">共 {summary?.total ?? 0} 個 Cluster</p>
       </div>
       
-      {/* 5 status cards */}
-      <div className="grid grid-cols-5 gap-4">
+      {/* 6 status cards */}
+      <div className="grid grid-cols-6 gap-4">
         {CLUSTER_STATUSES.map(status => {
           const config = STATUS_CONFIG[status];
           const count = summary?.status_counts[status] ?? 0;
@@ -72,7 +73,7 @@ export default function Dashboard() {
               {clusters
                 .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
                 .map(cluster => {
-                  const status = cluster.status ?? 'PO';
+                  const status = cluster.status ?? 'purchase';
                   const config = STATUS_CONFIG[status];
                   return (
                     <tr key={cluster.id} className="hover:bg-gray-50 transition-colors">

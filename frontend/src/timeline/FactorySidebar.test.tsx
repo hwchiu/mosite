@@ -12,12 +12,11 @@ const factories: Factory[] = [
 function renderSidebar() {
   const onToggle = vi.fn();
   const onShowAll = vi.fn();
-  const props: any = {
+  const props: Parameters<typeof FactorySidebar>[0] = {
     factories,
     visibleIds: new Set(factories.map((factory) => factory.id)),
     onToggle,
     onShowAll,
-    onShowProblems: vi.fn(),
   };
 
   render(<FactorySidebar {...props} />);

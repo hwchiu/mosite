@@ -52,6 +52,15 @@ async function waitForEditFormToClose() {
   });
 }
 
+async function waitForQueryClientsToSettle() {
+  await waitFor(() => {
+    for (const queryClient of queryClients) {
+      expect(queryClient.isMutating()).toBe(0);
+      expect(queryClient.isFetching()).toBe(0);
+    }
+  });
+}
+
 describe('Clusters milestone date editing', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -59,11 +68,8 @@ describe('Clusters milestone date editing', () => {
   });
 
   afterEach(async () => {
+    await waitForQueryClientsToSettle();
     for (const queryClient of queryClients) {
-      await waitFor(() => {
-        expect(queryClient.isMutating()).toBe(0);
-        expect(queryClient.isFetching()).toBe(0);
-      });
       queryClient.clear();
     }
     queryClients.length = 0;
@@ -163,6 +169,7 @@ describe('Clusters milestone date editing', () => {
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
     await waitForEditFormToClose();
+    await waitForQueryClientsToSettle();
 
     fireEvent.click(within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'));
     await waitFor(() => {
@@ -206,6 +213,7 @@ describe('Clusters milestone date editing', () => {
       });
     });
     await waitForEditFormToClose();
+    await waitForQueryClientsToSettle();
 
     fireEvent.click(within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'));
     await waitFor(() => {

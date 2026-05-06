@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTimelineClusters } from '../api/timeline';
 import TimelineToolbar from '../timeline/TimelineToolbar';
@@ -70,13 +70,9 @@ export default function Timeline() {
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [clusters]);
 
-  const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
-  // Initialize visibleIds once factories are loaded
-  useEffect(() => {
-    if (factories.length > 0 && visibleIds.size === 0) {
-      setVisibleIds(new Set(factories.map(f => f.id)));
-    }
-  }, [factories]);
+  const allVisibleIds = useMemo(() => new Set(factories.map(f => f.id)), [factories]);
+  const [visibleIds, setVisibleIds] = useState<Set<string> | null>(null);
+  const activeVisibleIds = visibleIds ?? allVisibleIds;
 
   // Columns
   const nowWeek = currentISOWeek();
@@ -90,7 +86,7 @@ export default function Timeline() {
   const nowColumn = mode === 'week' ? nowWeek : nowMonth;
 
   // Filter + group clusters by factory
-  const visibleFactories = factories.filter(f => visibleIds.has(f.id));
+  const visibleFactories = factories.filter(f => activeVisibleIds.has(f.id));
   const clustersByFactory = useMemo(() => {
     const map = new Map<string, typeof clusters>();
     clusters.forEach(c => {
@@ -108,16 +104,20 @@ export default function Timeline() {
 
   return (
     <div className="flex h-full overflow-hidden -m-6">
-      <FactorySidebar
-        factories={factories}
-        visibleIds={visibleIds}
-        onToggle={id => setVisibleIds(prev => {
-          const next = new Set(prev);
-          next.has(id) ? next.delete(id) : next.add(id);
-          return next;
-        })}
-        onShowAll={handleShowAll}
-      />
+        <FactorySidebar
+          factories={factories}
+          visibleIds={activeVisibleIds}
+          onToggle={id => setVisibleIds(prev => {
+            const next = new Set(prev ?? allVisibleIds);
+            if (next.has(id)) {
+              next.delete(id);
+            } else {
+              next.add(id);
+            }
+            return next;
+          })}
+          onShowAll={handleShowAll}
+        />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TimelineToolbar
           mode={mode}

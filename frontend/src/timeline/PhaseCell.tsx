@@ -34,36 +34,6 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
     );
   }
 
-  if (cell.status === 'blocked') {
-    return (
-      <div
-        className="h-5 rounded-sm"
-        style={{
-          background: 'rgba(239,68,68,0.12)',
-          border: '2px dashed #ef4444',
-          outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,
-          outlineOffset: '-1px',
-        }}
-        title="BLOCKED"
-      />
-    );
-  }
-
-  if (cell.status === 'estimated') {
-    const color = PHASE_COLORS[cell.phases[cell.phases.length - 1]];
-    return (
-      <div
-        className="h-5 rounded-sm"
-        style={{
-          background: 'transparent',
-          border: `1px dashed ${color}`,
-          outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,
-          outlineOffset: '-1px',
-        }}
-      />
-    );
-  }
-
   return (
     <div
       className="h-5 rounded-sm"
@@ -73,6 +43,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
         outlineOffset: '-1px',
         boxSizing: 'border-box',
       }}
+      title={cell.status === 'blocked' ? 'BLOCKED' : undefined}
     />
   );
 }

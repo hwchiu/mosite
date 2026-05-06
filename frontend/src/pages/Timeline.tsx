@@ -31,14 +31,6 @@ function Legend() {
           <span className="text-[10px] text-gray-500">{item.label}</span>
         </div>
       ))}
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm border border-dashed border-gray-400" />
-        <span className="text-[10px] text-gray-500">預估</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm" style={{ background: 'rgba(239,68,68,0.12)', border: '2px dashed #ef4444' }} />
-        <span className="text-[10px] text-gray-500">BLOCKED</span>
-      </div>
       <span className="ml-auto text-[10px] text-gray-400">藍色外框 = 當前 Phase</span>
     </div>
   );

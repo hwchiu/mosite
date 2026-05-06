@@ -47,8 +47,11 @@ const emptyForm = (): ClusterForm => ({
   phases: emptyPhases(),
 });
 
-function toPhasePayload(phases: PhaseForm): ClusterPhase[] {
+function toPhasePayload(phases: PhaseForm, existingPhases: ClusterPhase[] = []): ClusterPhase[] {
+  const existingByPhase = new Map(existingPhases.map((phase) => [phase.phase, phase] as const));
+
   return PHASE_ORDER.map((phase) => ({
+    ...existingByPhase.get(phase),
     phase,
     date: phases[phase],
   }));
@@ -143,6 +146,8 @@ export default function Clusters() {
     const error = validateForm(form);
     if (error) return setFormError(error);
 
+    const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.phases ?? [];
+
     setFormError('');
     updateMut.mutate({
       id: editingId,
@@ -150,7 +155,7 @@ export default function Clusters() {
         name: form.name.trim(),
         type: form.type as ClusterType,
         factory_id: form.factory_id,
-        phases: toPhasePayload(form.phases),
+        phases: toPhasePayload(form.phases, existingPhases),
       },
     });
   };

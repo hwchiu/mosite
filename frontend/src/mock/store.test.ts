@@ -135,4 +135,44 @@ describe('mock store derived schedule', () => {
 
     expect(reloaded.phases?.map((phase) => phase.status)).toEqual(['completed', 'in_progress', 'estimated']);
   });
+
+  it('extends partial schedules when a later status-only update targets a missing phase', async () => {
+    const { db_getCluster, db_updateCluster } = await importFreshStore();
+
+    await resolveAfterDelay(
+      db_updateCluster('c3', {
+        phases: [
+          { phase: 'PO', date: '2026-05-01' },
+          { phase: 'server_movein', date: '2026-05-05' },
+        ],
+      }),
+    );
+
+    const updated = await resolveAfterDelay(db_updateCluster('c3', { status: 'cpld' }));
+
+    expect(updated.status).toBe('cpld');
+    expect(updated.phases?.map((phase) => phase.phase)).toEqual([
+      'PO',
+      'server_movein',
+      'infra',
+      'cpld',
+      'sipd',
+    ]);
+    expect(updated.phases?.find((phase) => phase.phase === 'infra')?.status).toBe('completed');
+    expect(updated.phases?.find((phase) => phase.phase === 'cpld')?.status).toBe('in_progress');
+    expect(updated.phases?.find((phase) => phase.phase === 'sipd')?.status).toBe('estimated');
+
+    const reloaded = await resolveAfterDelay(db_getCluster('c3'));
+
+    expect(reloaded.status).toBe('cpld');
+    expect(reloaded.phases?.map((phase) => phase.phase)).toEqual([
+      'PO',
+      'server_movein',
+      'infra',
+      'cpld',
+      'sipd',
+    ]);
+    expect(reloaded.phases?.find((phase) => phase.phase === 'cpld')?.status).toBe('in_progress');
+    expect(reloaded.phases?.find((phase) => phase.phase === 'sipd')?.status).toBe('estimated');
+  });
 });

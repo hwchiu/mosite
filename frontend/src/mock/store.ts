@@ -53,17 +53,72 @@ function shiftISODate(date: string, deltaDays: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
+function buildCompatibilitySchedule(
+  phases: ClusterPhase[] | undefined,
+  today = new Date(),
+): ClusterPhase[] {
+  if (!phases?.length) {
+    return PHASE_ORDER.map((phase, index) => ({
+      phase,
+      date: shiftISODate(today.toISOString().slice(0, 10), index * COMPATIBILITY_PHASE_GAP_DAYS),
+    }));
+  }
+
+  const orderedPhases = [...phases].sort(
+    (a, b) => PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase),
+  );
+  const explicitByPhase = new Map(orderedPhases.map((phase) => [phase.phase, phase] as const));
+  const dates = PHASE_ORDER.map((phase) => explicitByPhase.get(phase)?.date);
+  const knownIndexes = dates.flatMap((date, index) => (date ? [index] : []));
+
+  if (!knownIndexes.length) {
+    return PHASE_ORDER.map((phase, index) => ({
+      phase,
+      date: shiftISODate(today.toISOString().slice(0, 10), index * COMPATIBILITY_PHASE_GAP_DAYS),
+    }));
+  }
+
+  const firstKnownIndex = knownIndexes[0];
+  for (let index = firstKnownIndex - 1; index >= 0; index--) {
+    dates[index] = shiftISODate(dates[index + 1]!, -COMPATIBILITY_PHASE_GAP_DAYS);
+  }
+
+  for (let knownIndex = 0; knownIndex < knownIndexes.length - 1; knownIndex++) {
+    const startIndex = knownIndexes[knownIndex];
+    const endIndex = knownIndexes[knownIndex + 1];
+    if (endIndex - startIndex <= 1) {
+      continue;
+    }
+
+    const startDate = dates[startIndex]!;
+    const startUtc = new Date(`${startDate}T00:00:00Z`);
+    const endUtc = new Date(`${dates[endIndex]!}T00:00:00Z`);
+    const totalDays = Math.round((endUtc.getTime() - startUtc.getTime()) / 86400000);
+    const totalSteps = endIndex - startIndex;
+
+    for (let offset = 1; offset < totalSteps; offset++) {
+      dates[startIndex + offset] = shiftISODate(startDate, Math.round((totalDays * offset) / totalSteps));
+    }
+  }
+
+  const lastKnownIndex = knownIndexes[knownIndexes.length - 1];
+  for (let index = lastKnownIndex + 1; index < PHASE_ORDER.length; index++) {
+    dates[index] = shiftISODate(dates[index - 1]!, COMPATIBILITY_PHASE_GAP_DAYS);
+  }
+
+  return PHASE_ORDER.map((phase, index) => ({
+    ...explicitByPhase.get(phase),
+    phase,
+    date: dates[index]!,
+  }));
+}
+
 function translateStatusUpdateToSchedule(
   phases: ClusterPhase[] | undefined,
   status: ClusterStatus,
   today = new Date(),
 ): ClusterPhase[] | undefined {
-  const basePhases = phases?.length
-    ? phases
-    : PHASE_ORDER.map((phase, index) => ({
-        phase,
-        date: shiftISODate(today.toISOString().slice(0, 10), index * COMPATIBILITY_PHASE_GAP_DAYS),
-      }));
+  const basePhases = buildCompatibilitySchedule(phases, today);
 
   const sorted = [...basePhases].sort(comparePhasesBySchedule);
   const targetPhase = sorted.find((phase) => phase.phase === status);

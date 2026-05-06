@@ -45,9 +45,10 @@ function Legend() {
 }
 
 export default function Timeline() {
+  const currentUtcYear = () => new Date().getUTCFullYear();
   const [mode, setMode] = useState<'week' | 'month'>('week');
   const [weekOffset, setWeekOffset] = useState(0);   // shift from default W-3
-  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [year, setYear] = useState(currentUtcYear);
 
   const { data: clusters = [], isLoading } = useQuery({
     queryKey: ['timeline-clusters'],
@@ -133,7 +134,7 @@ export default function Timeline() {
           onModeChange={m => { setMode(m); setWeekOffset(0); }}
           onPrev={() => mode === 'week' ? setWeekOffset(o => o - 3) : setYear(y => y - 1)}
           onNext={() => mode === 'week' ? setWeekOffset(o => o + 3) : setYear(y => y + 1)}
-          onToday={() => mode === 'week' ? setWeekOffset(0) : setYear(new Date().getFullYear())}
+          onToday={() => mode === 'week' ? setWeekOffset(0) : setYear(currentUtcYear())}
         />
         <div className="flex-1 overflow-auto">
           <div style={{ minWidth: '900px' }}>

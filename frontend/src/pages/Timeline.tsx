@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { fetchTimelineClusters } from '../api/timeline';
-import { updateCluster } from '../api/clusters';
+import { updateOperation } from '../api/clusters';
 import TimelineToolbar from '../timeline/TimelineToolbar';
 import FactorySidebar from '../timeline/FactorySidebar';
 import FactoryGroup from '../timeline/FactoryGroup';
@@ -13,10 +13,10 @@ import {
   buildMonthColumns,
   currentISOWeek,
   weekToMonth,
-  PHASE_ORDER,
   validatePhaseDates,
 } from '../timeline/utils';
-import type { Cluster, Factory, PhaseKey, ClusterPhase } from '../types';
+import type { Cluster, Factory, PhaseKey, ClusterPhase, ClusterOperation } from '../types';
+import { INIT_PHASES, EXPANSION_PHASES } from '../types';
 
 
 const PHASE_LABELS: Record<PhaseKey, string> = {
@@ -30,9 +30,9 @@ const PHASE_LABELS: Record<PhaseKey, string> = {
 
 type PhaseForm = Record<PhaseKey, string>;
 
-function phaseFormFromCluster(cluster: Cluster): PhaseForm {
+function phaseFormFromOperation(op: ClusterOperation): PhaseForm {
   const form: PhaseForm = { purchase: '', movein: '', infra: '', cluster: '', platform: '', release: '' };
-  cluster.phases?.forEach(p => { form[p.phase] = p.date ?? ''; });
+  op.phases.forEach(p => { form[p.phase] = p.date ?? ''; });
   return form;
 }
 
@@ -44,11 +44,24 @@ interface DrawerProps {
 
 function ClusterEditDrawer({ cluster, onClose, onSaved }: DrawerProps) {
   const queryClient = useQueryClient();
-  const [phases, setPhases] = useState<PhaseForm>(() => phaseFormFromCluster(cluster));
+  const operations = cluster.operations ?? [];
+  const [selectedOpId, setSelectedOpId] = useState(operations[operations.length - 1]?.id ?? '');
+  const selectedOp = operations.find(o => o.id === selectedOpId) ?? operations[operations.length - 1];
+  const phaseOrder = selectedOp?.type === 'expansion' ? EXPANSION_PHASES : INIT_PHASES;
+
+  const [phases, setPhases] = useState<PhaseForm>(() =>
+    selectedOp ? phaseFormFromOperation(selectedOp) : { purchase: '', movein: '', infra: '', cluster: '', platform: '', release: '' }
+  );
   const [error, setError] = useState('');
 
+  const handleOpChange = (opId: string) => {
+    setSelectedOpId(opId);
+    const op = operations.find(o => o.id === opId);
+    if (op) setPhases(phaseFormFromOperation(op));
+  };
+
   const mutation = useMutation({
-    mutationFn: (phases: ClusterPhase[]) => updateCluster(cluster.id, { phases }),
+    mutationFn: (payload: ClusterPhase[]) => updateOperation(cluster.id, selectedOpId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['timeline-clusters'] });
       onSaved();
@@ -58,8 +71,8 @@ function ClusterEditDrawer({ cluster, onClose, onSaved }: DrawerProps) {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: ClusterPhase[] = PHASE_ORDER.map((phase, i) => {
-      const existing = cluster.phases?.find(p => p.phase === phase);
+    const payload: ClusterPhase[] = phaseOrder.map((phase, i) => {
+      const existing = selectedOp?.phases.find(p => p.phase === phase);
       return { ...existing, phase, date: phases[phase], order: i };
     });
     const errs = validatePhaseDates(payload);
@@ -71,9 +84,7 @@ function ClusterEditDrawer({ cluster, onClose, onSaved }: DrawerProps) {
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
-      {/* Drawer */}
       <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div>
@@ -85,13 +96,31 @@ function ClusterEditDrawer({ cluster, onClose, onSaved }: DrawerProps) {
           </button>
         </div>
 
+        {/* Operation selector (only shown if >1 operation) */}
+        {operations.length > 1 && (
+          <div className="px-5 py-3 border-b border-gray-200">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Operation</label>
+            <select
+              value={selectedOpId}
+              onChange={e => handleOpChange(e.target.value)}
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+            >
+              {operations.map((op, idx) => (
+                <option key={op.id} value={op.id}>
+                  {op.type === 'init' ? 'Init' : op.label ?? `Expansion #${idx}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-y-auto">
           <div className="px-5 py-4 space-y-4 flex-1">
             <p className="text-xs text-gray-500">Edit milestone completion dates for each phase.</p>
             {error && (
               <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-600">{error}</div>
             )}
-            {PHASE_ORDER.map(phase => (
+            {phaseOrder.map(phase => (
               <div key={phase}>
                 <label className="block text-xs font-medium text-gray-700 mb-1">{PHASE_LABELS[phase]}</label>
                 <input
@@ -157,6 +186,7 @@ export default function Timeline() {
   const [year, setYear] = useState(currentUtcYear);
   const [typeFilter, setTypeFilter] = useState<'all' | 'k8s' | 'vm'>('all');
   const [nameFilter, setNameFilter] = useState('');
+  const [operationTypeFilter, setOperationTypeFilter] = useState<'all' | 'init' | 'expansion'>('all');
   const [editingCluster, setEditingCluster] = useState<Cluster | null>(null);
 
   const { data: clusters = [], isLoading } = useQuery({
@@ -164,14 +194,18 @@ export default function Timeline() {
     queryFn: fetchTimelineClusters,
   });
 
-  // Apply type + name filters
+  // Apply type + name + operation type filters
   const filteredClusters = useMemo(() => {
     return clusters.filter(c => {
       if (typeFilter !== 'all' && c.type !== typeFilter) return false;
       if (nameFilter && !c.name.toLowerCase().includes(nameFilter.toLowerCase())) return false;
+      if (operationTypeFilter !== 'all') {
+        const hasMatchingOp = c.operations?.some(o => o.type === operationTypeFilter);
+        if (!hasMatchingOp) return false;
+      }
       return true;
     });
-  }, [clusters, typeFilter, nameFilter]);
+  }, [clusters, typeFilter, nameFilter, operationTypeFilter]);
 
   // Derive factory list from filtered clusters
   const factories = useMemo((): Factory[] => {
@@ -245,6 +279,8 @@ export default function Timeline() {
           onToday={() => mode === 'week' ? setWeekOffset(0) : setYear(currentUtcYear())}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
+          operationTypeFilter={operationTypeFilter}
+          onOperationTypeFilterChange={setOperationTypeFilter}
           nameFilter={nameFilter}
           onNameFilterChange={setNameFilter}
         />
@@ -263,7 +299,7 @@ export default function Timeline() {
                 mode={mode}
                 nowColumn={nowColumn}
                 defaultExpanded={true}
-                onEdit={setEditingCluster}
+                onEdit={(cluster, _opId) => setEditingCluster(cluster)}
               />
             ))}
           </div>

@@ -6,13 +6,17 @@ interface Props {
   onToday: () => void;
   typeFilter: 'all' | 'k8s' | 'vm';
   onTypeFilterChange: (t: 'all' | 'k8s' | 'vm') => void;
+  operationTypeFilter: 'all' | 'init' | 'expansion';
+  onOperationTypeFilterChange: (t: 'all' | 'init' | 'expansion') => void;
   nameFilter: string;
   onNameFilterChange: (n: string) => void;
 }
 
 export default function TimelineToolbar({
   mode, onModeChange, onPrev, onNext, onToday,
-  typeFilter, onTypeFilterChange, nameFilter, onNameFilterChange,
+  typeFilter, onTypeFilterChange,
+  operationTypeFilter, onOperationTypeFilterChange,
+  nameFilter, onNameFilterChange,
 }: Props) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-200 flex-shrink-0 flex-wrap">
@@ -31,6 +35,20 @@ export default function TimelineToolbar({
             {t === 'all' ? 'All' : t.toUpperCase()}
           </button>
         ))}
+      </div>
+
+      {/* Operation type filter */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-gray-500">Op:</span>
+        <select
+          value={operationTypeFilter}
+          onChange={e => onOperationTypeFilterChange(e.target.value as 'all' | 'init' | 'expansion')}
+          className="px-2 py-1 text-[11px] border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="all">All</option>
+          <option value="init">Init Only</option>
+          <option value="expansion">Expansion Only</option>
+        </select>
       </div>
 
       {/* Name filter */}

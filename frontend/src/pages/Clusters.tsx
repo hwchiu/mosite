@@ -98,8 +98,8 @@ export default function Clusters() {
 
   const createMut = useMutation({
     mutationFn: createCluster,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
       setShowCreate(false);
       setForm(emptyForm());
       setFormError('');
@@ -109,8 +109,8 @@ export default function Clusters() {
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Cluster> }) => updateCluster(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
       setEditingId(null);
       setForm(emptyForm());
       setFormError('');
@@ -126,13 +126,13 @@ export default function Clusters() {
     },
   });
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const error = validateForm(form);
     if (error) return setFormError(error);
 
     setFormError('');
-    createMut.mutate({
+    await createMut.mutateAsync({
       name: form.name.trim(),
       type: form.type as ClusterType,
       factory_id: form.factory_id,
@@ -140,7 +140,7 @@ export default function Clusters() {
     });
   };
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
     const error = validateForm(form);
@@ -149,7 +149,7 @@ export default function Clusters() {
     const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.phases ?? [];
 
     setFormError('');
-    updateMut.mutate({
+    await updateMut.mutateAsync({
       id: editingId,
       data: {
         name: form.name.trim(),

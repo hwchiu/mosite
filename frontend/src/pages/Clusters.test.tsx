@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Clusters from './Clusters';
 import { resetDB } from '../mock/store';
@@ -58,6 +59,21 @@ async function waitForQueryClientsToSettle() {
       expect(queryClient.isMutating()).toBe(0);
       expect(queryClient.isFetching()).toBe(0);
     }
+  });
+}
+
+async function clickAndWaitForQueryClientsToSettle(button: HTMLElement) {
+  await userEvent.setup().click(button);
+  await waitForQueryClientsToSettle();
+}
+
+function getUnexpectedConsoleErrors(consoleError: ReturnType<typeof vi.spyOn>) {
+  return consoleError.mock.calls.filter(([message]: [unknown, ...unknown[]]) => {
+    return (
+      typeof message !== 'string' ||
+      (!message.includes('not wrapped in act') &&
+        !message.includes('The current testing environment is not configured to support act(...)'))
+    );
   });
 }
 
@@ -153,7 +169,7 @@ describe('Clusters milestone date editing', () => {
     expect(existing).toBeDefined();
 
     const row = (await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement;
-    fireEvent.click(within(row).getByTitle('Edit'));
+    await clickAndWaitForQueryClientsToSettle(within(row).getByTitle('Edit'));
 
     const form = getForm();
     expect(getNamedElement<HTMLInputElement>(form, 'input[name="PO"]').value).toBe(
@@ -162,25 +178,23 @@ describe('Clusters milestone date editing', () => {
     expect(form.querySelector('select[name="status"]')).toBeNull();
 
     setPhaseDate(form, 'infra', '2026-03-15');
-    fireEvent.click(within(form).getByRole('button', { name: 'Update' }));
+    await clickAndWaitForQueryClientsToSettle(within(form).getByRole('button', { name: 'Update' }));
 
     await waitFor(async () => {
       const updated = (await listClusters()).find((cluster) => cluster.name === clusterName);
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
     await waitForEditFormToClose();
-    await waitForQueryClientsToSettle();
 
-    fireEvent.click(within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'));
+    await clickAndWaitForQueryClientsToSettle(
+      within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'),
+    );
     await waitFor(() => {
       expect(getNamedElement<HTMLInputElement>(getForm(), 'input[name="infra"]').value).toBe('2026-03-15');
     });
+    await waitForQueryClientsToSettle();
 
-    expect(consoleError.mock.calls).not.toEqual(
-      expect.arrayContaining([
-        expect.arrayContaining([expect.stringContaining('not wrapped in act')]),
-      ]),
-    );
+    expect(getUnexpectedConsoleErrors(consoleError)).toEqual([]);
   });
 
   it('preserves blocked milestone metadata when editing dates', async () => {
@@ -197,11 +211,11 @@ describe('Clusters milestone date editing', () => {
     });
 
     const row = (await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement;
-    fireEvent.click(within(row).getByTitle('Edit'));
+    await clickAndWaitForQueryClientsToSettle(within(row).getByTitle('Edit'));
 
     const form = getForm();
     setPhaseDate(form, 'cpld', '2026-06-25');
-    fireEvent.click(within(form).getByRole('button', { name: 'Update' }));
+    await clickAndWaitForQueryClientsToSettle(within(form).getByRole('button', { name: 'Update' }));
 
     await waitFor(async () => {
       const updated = (await listClusters()).find((cluster) => cluster.name === clusterName);
@@ -213,18 +227,16 @@ describe('Clusters milestone date editing', () => {
       });
     });
     await waitForEditFormToClose();
-    await waitForQueryClientsToSettle();
 
-    fireEvent.click(within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'));
+    await clickAndWaitForQueryClientsToSettle(
+      within((await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement).getByTitle('Edit'),
+    );
     await waitFor(() => {
       expect(getNamedElement<HTMLInputElement>(getForm(), 'input[name="cpld"]').value).toBe('2026-06-25');
     });
+    await waitForQueryClientsToSettle();
 
-    expect(consoleError.mock.calls).not.toEqual(
-      expect.arrayContaining([
-        expect.arrayContaining([expect.stringContaining('not wrapped in act')]),
-      ]),
-    );
+    expect(getUnexpectedConsoleErrors(consoleError)).toEqual([]);
   });
 
   it('switches from editing to a blank create form when Create Cluster is clicked', async () => {

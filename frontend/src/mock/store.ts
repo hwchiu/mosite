@@ -1,16 +1,84 @@
-import type { Factory, Cluster, DashboardSummary, ClusterStatus } from '../types';
+import type { Factory, Cluster, ClusterPhase, DashboardSummary, ClusterStatus, PhaseStatus } from '../types';
 import { deriveClusterStatus } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
 const LS_KEY = 'mosite_mock_db_v4';
+const PHASE_ORDER: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
 
 interface MockDB {
   factories: Factory[];
   clusters: Cluster[];
 }
 
+function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
+  const dateComparison = a.date.localeCompare(b.date);
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  return PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase);
+}
+
+function hydratePhaseStatuses(phases: ClusterPhase[], today = new Date()): ClusterPhase[] {
+  const sorted = [...phases].sort(comparePhasesBySchedule);
+  const todayKey = today.toISOString().slice(0, 10);
+  const currentPhase = deriveClusterStatus(sorted, today);
+  const finalPhase = sorted[sorted.length - 1];
+  const activePhase =
+    finalPhase && todayKey > finalPhase.date && finalPhase.status !== 'blocked' ? null : currentPhase;
+
+  return sorted.map((phase) => {
+    let status: PhaseStatus;
+    if (phase.status === 'blocked') {
+      status = 'blocked';
+    } else if (phase.date > todayKey) {
+      status = 'estimated';
+    } else if (phase.phase === activePhase) {
+      status = 'in_progress';
+    } else {
+      status = 'completed';
+    }
+
+    return {
+      ...phase,
+      status,
+    };
+  });
+}
+
+function shiftISODate(date: string, deltaDays: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + deltaDays);
+  return shifted.toISOString().slice(0, 10);
+}
+
+function translateStatusUpdateToSchedule(
+  phases: ClusterPhase[] | undefined,
+  status: ClusterStatus,
+  today = new Date(),
+): ClusterPhase[] | undefined {
+  if (!phases?.length) {
+    return phases;
+  }
+
+  const sorted = [...phases].sort(comparePhasesBySchedule);
+  const targetPhase = sorted.find((phase) => phase.phase === status);
+  if (!targetPhase) {
+    return sorted;
+  }
+
+  const todayUtc = new Date(`${today.toISOString().slice(0, 10)}T00:00:00Z`);
+  const targetUtc = new Date(`${targetPhase.date}T00:00:00Z`);
+  const deltaDays = Math.round((todayUtc.getTime() - targetUtc.getTime()) / 86400000);
+
+  return sorted.map((phase) => ({
+    ...phase,
+    date: shiftISODate(phase.date, deltaDays),
+  }));
+}
+
 function hydrateCluster(cluster: Cluster): Cluster {
-  const phases = [...(cluster.phases ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  const phases = hydratePhaseStatuses(cluster.phases ?? []);
 
   return {
     ...cluster,
@@ -127,6 +195,9 @@ export async function db_updateCluster(
     const c = d.clusters.find(x => x.id === id);
     if (!c) throw new Error('Cluster not found');
     Object.assign(c, data);
+    if (data.status && !data.phases) {
+      c.phases = translateStatusUpdateToSchedule(c.phases, data.status);
+    }
     if (data.factory_id) {
       const factory = d.factories.find(f => f.id === data.factory_id);
       if (factory) c.factory_name = factory.name;

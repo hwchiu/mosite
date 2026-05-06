@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, FilterX } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { listClusters, createCluster, updateCluster, deleteCluster } from '../api/clusters';
 import { listFactories } from '../api/factories';
@@ -85,6 +85,15 @@ function formFromCluster(cluster: Cluster): ClusterForm {
   };
 }
 
+interface FilterState {
+  factory: string;
+  name: string;
+  type: string;
+  status: string;
+}
+
+const emptyFilter = (): FilterState => ({ factory: '', name: '', type: '', status: '' });
+
 export default function Clusters() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -92,6 +101,7 @@ export default function Clusters() {
   const [form, setForm] = useState<ClusterForm>(emptyForm);
   const [formError, setFormError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterState>(emptyFilter());
 
   const clustersQ = useQuery({ queryKey: ['clusters'], queryFn: () => listClusters() });
   const factoriesQ = useQuery({ queryKey: ['factories'], queryFn: listFactories });
@@ -190,6 +200,20 @@ export default function Clusters() {
 
   const clusters = clustersQ.data ?? [];
   const factories = factoriesQ.data ?? [];
+
+  const filteredClusters = useMemo(() => {
+    return clusters
+      .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
+      .filter((c) => {
+        if (filters.factory && !(c.factory_name ?? '').toLowerCase().includes(filters.factory.toLowerCase())) return false;
+        if (filters.name && !c.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
+        if (filters.type && c.type !== filters.type) return false;
+        if (filters.status && c.status !== filters.status) return false;
+        return true;
+      });
+  }, [clusters, filters]);
+
+  const hasFilter = Object.values(filters).some(Boolean);
 
   return (
     <div className="space-y-5">
@@ -337,13 +361,72 @@ export default function Clusters() {
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {hasFilter && (
+                      <button
+                        onClick={() => setFilters(emptyFilter())}
+                        className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-normal normal-case"
+                        title="Clear all filters"
+                      >
+                        <FilterX size={13} /> Clear
+                      </button>
+                    )}
+                  </th>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={filters.factory}
+                      onChange={(e) => setFilters({ ...filters, factory: e.target.value })}
+                      placeholder="Filter…"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={filters.name}
+                      onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                      placeholder="Filter…"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={filters.type}
+                      onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                    >
+                      <option value="">All</option>
+                      <option value="k8s">k8s</option>
+                      <option value="vm">vm</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={filters.status}
+                      onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                    >
+                      <option value="">All</option>
+                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                        <option key={key} value={key}>{cfg.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {clusters
-                  .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
-                  .map((cluster) => {
+                {filteredClusters.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400">
+                      No clusters match the current filters.
+                    </td>
+                  </tr>
+                ) : (
+                filteredClusters.map((cluster) => {
                     const status = cluster.status ?? 'PO';
                     const config = STATUS_CONFIG[status];
                     return (
@@ -388,7 +471,7 @@ export default function Clusters() {
                         </td>
                       </tr>
                     );
-                  })}
+                  }))}
               </tbody>
             </table>
           </div>

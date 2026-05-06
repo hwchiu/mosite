@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, X, FilterX } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, FilterX, ChevronRight, ChevronDown } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { listClusters, createCluster, updateCluster, deleteCluster } from '../api/clusters';
+import { listClusters, createCluster, updateCluster, deleteCluster, addOperation, updateOperation, deleteOperation } from '../api/clusters';
 import { listFactories } from '../api/factories';
 import { PHASE_ORDER, validatePhaseDates } from '../timeline/utils';
-import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey } from '../types';
+import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey, ClusterOperation, OperationType } from '../types';
+import { INIT_PHASES, EXPANSION_PHASES } from '../types';
 
 const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
   purchase: { label: 'Purchase', bg: 'bg-gray-50',    text: 'text-gray-700',    border: 'border-gray-200',    dotColor: '#94a3b8' },
@@ -25,16 +26,15 @@ const PHASE_LABELS: Record<PhaseKey, string> = {
   release:  'Release',
 };
 
-type PhaseForm = Record<PhaseKey, string>;
+const INIT_PHASE_ORDER: PhaseKey[] = INIT_PHASES;
+const EXPANSION_PHASE_ORDER: PhaseKey[] = EXPANSION_PHASES;
 
-const emptyPhases = (): PhaseForm => ({
-  purchase: '',
-  movein:   '',
-  infra:    '',
-  cluster:  '',
-  platform: '',
-  release:  '',
-});
+type PhaseForm = Partial<Record<PhaseKey, string>>;
+
+function emptyPhaseForm(type: OperationType): PhaseForm {
+  const keys = type === 'init' ? INIT_PHASE_ORDER : EXPANSION_PHASE_ORDER;
+  return Object.fromEntries(keys.map(k => [k, ''])) as PhaseForm;
+}
 
 interface ClusterForm {
   name: string;
@@ -47,16 +47,16 @@ const emptyForm = (): ClusterForm => ({
   name: '',
   type: '',
   factory_id: '',
-  phases: emptyPhases(),
+  phases: emptyPhaseForm('init'),
 });
 
-function toPhasePayload(phases: PhaseForm, existingPhases: ClusterPhase[] = []): ClusterPhase[] {
-  const existingByPhase = new Map(existingPhases.map((phase) => [phase.phase, phase] as const));
-
-  return PHASE_ORDER.map((phase) => ({
+function toPhasePayload(phases: PhaseForm, type: OperationType, existingPhases: ClusterPhase[] = []): ClusterPhase[] {
+  const keys = type === 'init' ? INIT_PHASE_ORDER : EXPANSION_PHASE_ORDER;
+  const existingByPhase = new Map(existingPhases.map(p => [p.phase, p] as const));
+  return keys.map(phase => ({
     ...existingByPhase.get(phase),
     phase,
-    date: phases[phase],
+    date: phases[phase] ?? '',
   }));
 }
 
@@ -65,27 +65,25 @@ function validateForm(form: ClusterForm): string {
   if (!form.type) return 'Type is required';
   if (!form.factory_id) return 'Factory is required';
 
-  for (const phase of PHASE_ORDER) {
-    if (!form.phases[phase]) {
-      return `${PHASE_LABELS[phase]} date is required`;
-    }
+  for (const phase of INIT_PHASE_ORDER) {
+    if (!form.phases[phase]) return `${PHASE_LABELS[phase]} date is required`;
   }
 
-  return Object.values(validatePhaseDates(toPhasePayload(form.phases)))[0] ?? '';
+  return Object.values(validatePhaseDates(toPhasePayload(form.phases, 'init')))[0] ?? '';
+}
+
+function validateExpansionForm(phases: PhaseForm): string {
+  for (const phase of EXPANSION_PHASE_ORDER) {
+    if (!phases[phase]) return `${PHASE_LABELS[phase]} date is required`;
+  }
+  return Object.values(validatePhaseDates(toPhasePayload(phases, 'expansion')))[0] ?? '';
 }
 
 function formFromCluster(cluster: Cluster): ClusterForm {
-  const phases = emptyPhases();
-  cluster.operations?.[0]?.phases?.forEach((phase) => {
-    phases[phase.phase] = phase.date;
-  });
-
-  return {
-    name: cluster.name,
-    type: cluster.type,
-    factory_id: cluster.factory_id,
-    phases,
-  };
+  const phases = emptyPhaseForm('init');
+  const initOp = cluster.operations?.find(o => o.type === 'init');
+  initOp?.phases.forEach(p => { (phases as Record<string, string>)[p.phase] = p.date; });
+  return { name: cluster.name, type: cluster.type, factory_id: cluster.factory_id, phases };
 }
 
 interface FilterState {
@@ -105,6 +103,14 @@ export default function Clusters() {
   const [formError, setFormError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(emptyFilter());
+
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [addingExpansionFor, setAddingExpansionFor] = useState<string | null>(null);
+  const [expansionForm, setExpansionForm] = useState<PhaseForm>(emptyPhaseForm('expansion'));
+  const [expansionFormError, setExpansionFormError] = useState('');
+  const [editingOperation, setEditingOperation] = useState<{ clusterId: string; op: ClusterOperation } | null>(null);
+  const [opEditForm, setOpEditForm] = useState<PhaseForm>(emptyPhaseForm('init'));
+  const [opEditError, setOpEditError] = useState('');
 
   const clustersQ = useQuery({ queryKey: ['clusters'], queryFn: () => listClusters() });
   const factoriesQ = useQuery({ queryKey: ['factories'], queryFn: listFactories });
@@ -139,22 +145,48 @@ export default function Clusters() {
     },
   });
 
+  const addOpMut = useMutation({
+    mutationFn: ({ clusterId, data }: { clusterId: string; data: { type: OperationType; label?: string; phases: ClusterPhase[] } }) =>
+      addOperation(clusterId, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      setAddingExpansionFor(null);
+      setExpansionForm(emptyPhaseForm('expansion'));
+      setExpansionFormError('');
+    },
+    onError: (err: Error) => setExpansionFormError(err.message),
+  });
+
+  const updateOpMut = useMutation({
+    mutationFn: ({ clusterId, opId, phases }: { clusterId: string; opId: string; phases: ClusterPhase[] }) =>
+      updateOperation(clusterId, opId, phases),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      setEditingOperation(null);
+      setOpEditError('');
+    },
+    onError: (err: Error) => setOpEditError(err.message),
+  });
+
+  const deleteOpMut = useMutation({
+    mutationFn: ({ clusterId, opId }: { clusterId: string; opId: string }) =>
+      deleteOperation(clusterId, opId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clusters'] }),
+  });
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const error = validateForm(form);
     if (error) return setFormError(error);
-
     setFormError('');
     try {
       await createMut.mutateAsync({
         name: form.name.trim(),
         type: form.type as ClusterType,
         factory_id: form.factory_id,
-        phases: toPhasePayload(form.phases),
+        phases: toPhasePayload(form.phases, 'init'),
       });
-    } catch {
-      // onError surfaces the validation message for the form.
-    }
+    } catch { /* onError handles */ }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -173,12 +205,10 @@ export default function Clusters() {
           name: form.name.trim(),
           type: form.type as ClusterType,
           factory_id: form.factory_id,
-          phases: toPhasePayload(form.phases, existingPhases),
+          phases: toPhasePayload(form.phases, 'init', existingPhases),
         },
       });
-    } catch {
-      // onError surfaces the validation message for the form.
-    }
+    } catch { /* onError handles */ }
   };
 
   const startEdit = (cluster: Cluster) => {
@@ -301,7 +331,7 @@ export default function Clusters() {
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-3">Milestone Dates</h3>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-                {PHASE_ORDER.map((phase) => (
+                {INIT_PHASE_ORDER.map((phase) => (
                   <div key={phase}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {PHASE_LABELS[phase]} Date
@@ -309,7 +339,7 @@ export default function Clusters() {
                     <input
                       name={phase}
                       type="date"
-                      value={form.phases[phase]}
+                      value={form.phases[phase] ?? ''}
                       onChange={(e) =>
                         setForm({
                           ...form,
@@ -360,6 +390,7 @@ export default function Clusters() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="px-2 py-3 w-8" />
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Factory</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -377,6 +408,7 @@ export default function Clusters() {
                   </th>
                 </tr>
                 <tr className="border-b border-gray-200">
+                  <td />
                   <td className="px-3 py-2">
                     <input
                       type="text"
@@ -424,16 +456,31 @@ export default function Clusters() {
               <tbody className="divide-y divide-gray-100">
                 {filteredClusters.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400">
+                    <td colSpan={6} className="px-5 py-8 text-center text-sm text-gray-400">
                       No clusters match the current filters.
                     </td>
                   </tr>
                 ) : (
                 filteredClusters.map((cluster) => {
-                    const status = cluster.status ?? 'purchase';
-                    const config = STATUS_CONFIG[status];
-                    return (
-                      <tr key={cluster.id} className="hover:bg-gray-50 transition-colors">
+                  const isExpanded = expandedRows.has(cluster.id);
+                  const status = cluster.status ?? 'purchase';
+                  const config = STATUS_CONFIG[status];
+                  return (
+                    <React.Fragment key={cluster.id}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-2 py-3 w-8">
+                          <button
+                            title="Toggle operations"
+                            onClick={() => setExpandedRows(prev => {
+                              const next = new Set(prev);
+                              next.has(cluster.id) ? next.delete(cluster.id) : next.add(cluster.id);
+                              return next;
+                            })}
+                            className="text-gray-400 hover:text-indigo-600"
+                          >
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </button>
+                        </td>
                         <td className="px-5 py-3 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">{cluster.factory_name}</span>
                         </td>
@@ -473,8 +520,111 @@ export default function Clusters() {
                           </div>
                         </td>
                       </tr>
-                    );
-                  }))}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={6} className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+                            <div className="space-y-2">
+                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Operations</div>
+                              {cluster.operations?.map((op, idx) => (
+                                <div key={op.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                                  <div>
+                                    <span className="text-xs font-medium text-gray-700">
+                                      {op.type === 'init' ? 'Init' : op.label ?? `Expansion #${idx}`}
+                                    </span>
+                                    <span className="ml-2 text-xs text-gray-400">
+                                      {op.phases[0]?.date} → {op.phases[op.phases.length - 1]?.date}
+                                    </span>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      title="Edit operation phases"
+                                      onClick={() => {
+                                        const opForm: PhaseForm = Object.fromEntries(op.phases.map(p => [p.phase, p.date]));
+                                        setOpEditForm(opForm);
+                                        setEditingOperation({ clusterId: cluster.id, op });
+                                        setOpEditError('');
+                                      }}
+                                      className="text-gray-400 hover:text-indigo-600"
+                                    >
+                                      <Edit2 size={13} />
+                                    </button>
+                                    {op.type !== 'init' && (
+                                      <button
+                                        title="Delete operation"
+                                        onClick={() => deleteOpMut.mutate({ clusterId: cluster.id, opId: op.id })}
+                                        className="text-gray-400 hover:text-red-600"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              {addingExpansionFor === cluster.id ? (
+                                <form
+                                  onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const err = validateExpansionForm(expansionForm);
+                                    if (err) return setExpansionFormError(err);
+                                    setExpansionFormError('');
+                                    const expCount = (cluster.operations?.filter(o => o.type === 'expansion').length ?? 0) + 1;
+                                    await addOpMut.mutateAsync({
+                                      clusterId: cluster.id,
+                                      data: {
+                                        type: 'expansion',
+                                        label: `Expansion #${expCount}`,
+                                        phases: toPhasePayload(expansionForm, 'expansion'),
+                                      },
+                                    });
+                                  }}
+                                  className="space-y-3 pt-2 border-t border-gray-200 mt-2"
+                                >
+                                  {expansionFormError && (
+                                    <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{expansionFormError}</div>
+                                  )}
+                                  <div className="grid grid-cols-5 gap-3">
+                                    {EXPANSION_PHASE_ORDER.map(phase => (
+                                      <div key={phase}>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">{PHASE_LABELS[phase]}</label>
+                                        <input
+                                          name={phase}
+                                          type="date"
+                                          value={expansionForm[phase] ?? ''}
+                                          onChange={e => setExpansionForm(prev => ({ ...prev, [phase]: e.target.value }))}
+                                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500"
+                                          required
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-2 justify-end">
+                                    <button type="button" onClick={() => setAddingExpansionFor(null)} className="px-3 py-1 text-xs text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                                      Cancel
+                                    </button>
+                                    <button type="submit" disabled={addOpMut.isPending} className="px-3 py-1 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50">
+                                      Add Expansion
+                                    </button>
+                                  </div>
+                                </form>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setAddingExpansionFor(cluster.id);
+                                    setExpansionForm(emptyPhaseForm('expansion'));
+                                    setExpansionFormError('');
+                                  }}
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                >
+                                  + Add Expansion
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                }))}
               </tbody>
             </table>
           </div>
@@ -507,6 +657,58 @@ export default function Clusters() {
           </div>
         </div>
       )}
+      {/* Operation Edit Modal */}
+      {editingOperation && (() => {
+        const { clusterId, op } = editingOperation;
+        const opPhaseOrder = op.type === 'init' ? INIT_PHASE_ORDER : EXPANSION_PHASE_ORDER;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-[480px]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-800">
+                  Edit {op.type === 'init' ? 'Init' : op.label ?? 'Expansion'} Phases
+                </h2>
+                <button onClick={() => setEditingOperation(null)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+              </div>
+              {opEditError && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-3">{opEditError}</div>}
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const phases = toPhasePayload(opEditForm, op.type);
+                const errs = validatePhaseDates(phases);
+                const firstErr = Object.values(errs)[0];
+                if (firstErr) return setOpEditError(firstErr);
+                setOpEditError('');
+                await updateOpMut.mutateAsync({ clusterId, opId: op.id, phases });
+              }} className="space-y-4">
+                <div className={`grid gap-3 ${op.type === 'init' ? 'grid-cols-3' : 'grid-cols-5'}`}>
+                  {opPhaseOrder.map(phase => (
+                    <div key={phase}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{PHASE_LABELS[phase]}</label>
+                      <input
+                        type="date"
+                        value={opEditForm[phase] ?? ''}
+                        onChange={e => setOpEditForm(prev => ({ ...prev, [phase]: e.target.value }))}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button type="button" onClick={() => setEditingOperation(null)} className="px-3 py-1 text-xs text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={updateOpMut.isPending} className="px-3 py-1 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50">
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

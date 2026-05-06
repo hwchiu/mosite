@@ -141,4 +141,34 @@ describe('Clusters milestone date editing', () => {
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
   });
+
+  it('preserves blocked milestone metadata when editing dates', async () => {
+    renderClusters();
+
+    const clusterName = 'F2-K8S-Prod';
+    const existing = (await listClusters()).find((cluster) => cluster.name === clusterName);
+    const blockedPhase = existing?.phases?.find((phase) => phase.phase === 'infra');
+    expect(blockedPhase).toMatchObject({
+      date: '2026-06-04',
+      status: 'blocked',
+      note: '機器延遲到貨，預計 W23 恢復',
+    });
+
+    const row = (await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement;
+    fireEvent.click(within(row).getByTitle('Edit'));
+
+    const form = getForm();
+    setPhaseDate(form, 'cpld', '2026-06-25');
+    fireEvent.click(within(form).getByRole('button', { name: 'Update' }));
+
+    await waitFor(async () => {
+      const updated = (await listClusters()).find((cluster) => cluster.name === clusterName);
+      expect(updated?.phases?.find((phase) => phase.phase === 'cpld')?.date).toBe('2026-06-25');
+      expect(updated?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
+        date: '2026-06-04',
+        status: 'blocked',
+        note: '機器延遲到貨，預計 W23 恢復',
+      });
+    });
+  });
 });

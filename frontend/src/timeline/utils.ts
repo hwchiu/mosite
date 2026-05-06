@@ -42,6 +42,10 @@ export function weekToMonth(w: string): string {
   return isoWeekToUTCThursday(w).toISOString().slice(0, 7);
 }
 
+export function isoWeekToDate(isoWeek: string): string {
+  return isoWeekToUTCThursday(isoWeek).toISOString().slice(0, 10);
+}
+
 export function dateToWeekKey(date: string): string {
   const source = new Date(`${date}T00:00:00Z`);
   const thursday = new Date(source);

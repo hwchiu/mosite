@@ -1,5 +1,5 @@
 import type { Factory, Cluster, ClusterPhase, DashboardSummary, ClusterStatus, PhaseStatus } from '../types';
-import { deriveClusterStatus, validatePhaseDates } from '../timeline/utils';
+import { deriveClusterStatus, isoWeekToDate, validatePhaseDates } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
 const LS_KEY = 'mosite_mock_db_v4';
@@ -10,6 +10,20 @@ const COMPATIBILITY_PHASE_GAP_DAYS = 14;
 interface MockDB {
   factories: Factory[];
   clusters: Cluster[];
+}
+
+type LegacyClusterPhase = Omit<ClusterPhase, 'date'> & {
+  date?: string;
+  completionWeek?: string;
+};
+
+type LegacyCluster = Omit<Cluster, 'phases'> & {
+  phases?: LegacyClusterPhase[];
+};
+
+interface LegacyMockDB {
+  factories: Factory[];
+  clusters: LegacyCluster[];
 }
 
 function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
@@ -164,27 +178,58 @@ function delay<T>(value: T, ms = 120): Promise<T> {
   return new Promise(resolve => setTimeout(() => resolve(value), ms));
 }
 
-function parsePersistedDB(raw: string | null): MockDB | null {
+function parsePersistedDB<T>(raw: string | null): T | null {
   if (!raw) {
     return null;
   }
 
   try {
-    return JSON.parse(raw) as MockDB;
+    return JSON.parse(raw) as T;
   } catch {
     return null;
   }
 }
 
+function migrateLegacyPhase(phase: LegacyClusterPhase): ClusterPhase {
+  const { completionWeek, date, ...rest } = phase;
+  if (date) {
+    return {
+      ...rest,
+      date,
+    };
+  }
+
+  if (!completionWeek) {
+    throw new Error(`Invalid legacy phase data: phase ${rest.phase} has neither date nor completionWeek`);
+  }
+
+  return {
+    ...rest,
+    date: isoWeekToDate(completionWeek),
+  };
+}
+
+function migrateLegacyCluster(cluster: LegacyCluster): Cluster {
+  return {
+    ...cluster,
+    phases: cluster.phases?.map(migrateLegacyPhase),
+  };
+}
+
 function migrateLegacyDB(): MockDB | null {
-  const legacy = parsePersistedDB(localStorage.getItem(LEGACY_LS_KEY));
+  const legacy = parsePersistedDB<LegacyMockDB>(localStorage.getItem(LEGACY_LS_KEY));
   if (!legacy) {
     return null;
   }
 
-  saveDB(legacy);
+  const migrated: MockDB = {
+    factories: legacy.factories,
+    clusters: legacy.clusters.map(migrateLegacyCluster),
+  };
+
+  saveDB(migrated);
   localStorage.removeItem(LEGACY_LS_KEY);
-  return legacy;
+  return migrated;
 }
 
 function assertValidPhaseOrdering(phases: ClusterPhase[] | undefined): void {
@@ -199,7 +244,7 @@ function assertValidPhaseOrdering(phases: ClusterPhase[] | undefined): void {
 }
 
 function loadDB(): MockDB {
-  const current = parsePersistedDB(localStorage.getItem(LS_KEY));
+  const current = parsePersistedDB<MockDB>(localStorage.getItem(LS_KEY));
   if (current) {
     return current;
   }

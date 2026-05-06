@@ -1,17 +1,5 @@
 import type { Factory, Cluster } from '../types';
-
-const isoWeekToDate = (isoWeek: string): string => {
-  const [yearStr, weekStr] = isoWeek.split('-W');
-  const year = Number.parseInt(yearStr, 10);
-  const week = Number.parseInt(weekStr, 10);
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const dayOfWeek = jan4.getUTCDay() || 7;
-  const monday = new Date(jan4);
-  monday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1) + (week - 1) * 7);
-  const thursday = new Date(monday);
-  thursday.setUTCDate(monday.getUTCDate() + 3);
-  return thursday.toISOString().slice(0, 10);
-};
+import { isoWeekToDate } from '../timeline/utils';
 
 export const SEED_FACTORIES: Factory[] = [
   { id: 'f1',  name: 'F1',  created_at: '2025-01-10T08:00:00Z' },

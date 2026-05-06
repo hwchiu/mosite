@@ -75,7 +75,7 @@ describe('mock store derived schedule', () => {
     });
   });
 
-  it('migrates a persisted v3 database before falling back to seeds', async () => {
+  it('migrates persisted v3 completionWeek phases into readable date phases before falling back to seeds', async () => {
     localStorage.clear();
     vi.resetModules();
     persistLegacyDB({
@@ -89,9 +89,9 @@ describe('mock store derived schedule', () => {
           factory_name: 'Legacy Factory',
           status: 'infra',
           phases: [
-            { phase: 'PO', date: '2026-05-01' },
-            { phase: 'server_movein', date: '2026-05-05' },
-            { phase: 'infra', date: '2026-05-09' },
+            { phase: 'PO', completionWeek: '2026-W14', status: 'completed' },
+            { phase: 'server_movein', completionWeek: '2026-W18', status: 'completed' },
+            { phase: 'infra', completionWeek: '2026-W19', status: 'estimated' },
           ],
           created_at: '2025-01-02T00:00:00Z',
         },
@@ -113,13 +113,38 @@ describe('mock store derived schedule', () => {
       factory_id: 'legacy-f1',
       status: 'server_movein',
       phases: [
-        { phase: 'PO', date: '2026-05-01', status: 'completed' },
-        { phase: 'server_movein', date: '2026-05-05', status: 'in_progress' },
-        { phase: 'infra', date: '2026-05-09', status: 'estimated' },
+        { phase: 'PO', date: '2026-04-02', status: 'completed' },
+        { phase: 'server_movein', date: '2026-04-30', status: 'in_progress' },
+        { phase: 'infra', date: '2026-05-07', status: 'estimated' },
       ],
     });
     expect(localStorage.getItem('mosite_mock_db_v4')).toContain('legacy-c1');
+    expect(localStorage.getItem('mosite_mock_db_v4')).not.toContain('completionWeek');
     expect(localStorage.getItem('mosite_mock_db_v3')).toBeNull();
+  });
+
+  it('rejects malformed v3 phases that have neither date nor completionWeek', async () => {
+    localStorage.clear();
+    vi.resetModules();
+    persistLegacyDB({
+      factories: [{ id: 'legacy-f1', name: 'Legacy Factory', created_at: '2025-01-01T00:00:00Z' }],
+      clusters: [
+        {
+          id: 'legacy-c1',
+          name: 'Legacy Cluster',
+          type: 'k8s',
+          factory_id: 'legacy-f1',
+          phases: [{ phase: 'PO', status: 'completed' }],
+          created_at: '2025-01-02T00:00:00Z',
+        },
+      ],
+    });
+
+    const { db_listClusters } = await importFreshStore();
+
+    await expect(db_listClusters()).rejects.toThrow(
+      'Invalid legacy phase data: phase PO has neither date nor completionWeek',
+    );
   });
 
   it('creates a usable derived schedule for status-only cluster payloads', async () => {

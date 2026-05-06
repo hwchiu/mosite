@@ -1,8 +1,9 @@
 import type { Factory, Cluster, ClusterPhase, DashboardSummary, ClusterStatus, PhaseStatus } from '../types';
-import { deriveClusterStatus } from '../timeline/utils';
+import { deriveClusterStatus, validatePhaseDates } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
 const LS_KEY = 'mosite_mock_db_v4';
+const LEGACY_LS_KEY = 'mosite_mock_db_v3';
 const PHASE_ORDER: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
 const COMPATIBILITY_PHASE_GAP_DAYS = 14;
 
@@ -163,13 +164,51 @@ function delay<T>(value: T, ms = 120): Promise<T> {
   return new Promise(resolve => setTimeout(() => resolve(value), ms));
 }
 
-function loadDB(): MockDB {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as MockDB;
-  } catch {
-    // ignore
+function parsePersistedDB(raw: string | null): MockDB | null {
+  if (!raw) {
+    return null;
   }
+
+  try {
+    return JSON.parse(raw) as MockDB;
+  } catch {
+    return null;
+  }
+}
+
+function migrateLegacyDB(): MockDB | null {
+  const legacy = parsePersistedDB(localStorage.getItem(LEGACY_LS_KEY));
+  if (!legacy) {
+    return null;
+  }
+
+  saveDB(legacy);
+  localStorage.removeItem(LEGACY_LS_KEY);
+  return legacy;
+}
+
+function assertValidPhaseOrdering(phases: ClusterPhase[] | undefined): void {
+  if (!phases?.length) {
+    return;
+  }
+
+  const [error] = Object.values(validatePhaseDates(phases));
+  if (error) {
+    throw new Error(error);
+  }
+}
+
+function loadDB(): MockDB {
+  const current = parsePersistedDB(localStorage.getItem(LS_KEY));
+  if (current) {
+    return current;
+  }
+
+  const migrated = migrateLegacyDB();
+  if (migrated) {
+    return migrated;
+  }
+
   return {
     factories: structuredClone(SEED_FACTORIES),
     clusters: structuredClone(SEED_CLUSTERS),
@@ -239,9 +278,11 @@ export async function db_createCluster(data: Omit<Cluster, 'id' | 'created_at' |
   const db = getDB();
   const factory = db.factories.find(f => f.id === data.factory_id);
   if (!factory) throw new Error('Factory not found');
+  const phases = data.status && !data.phases ? translateStatusUpdateToSchedule(undefined, data.status) : data.phases;
+  assertValidPhaseOrdering(phases);
   const cluster: Cluster = {
     ...data,
-    phases: data.status && !data.phases ? translateStatusUpdateToSchedule(undefined, data.status) : data.phases,
+    phases,
     id: uuid(),
     factory_name: factory.name,
     created_at: now(),
@@ -264,14 +305,16 @@ export async function db_updateCluster(
   mutate(d => {
     const c = d.clusters.find(x => x.id === id);
     if (!c) throw new Error('Cluster not found');
-    Object.assign(c, data);
+    const nextCluster: Cluster = { ...c, ...data };
     if (data.status && !data.phases) {
-      c.phases = translateStatusUpdateToSchedule(c.phases, data.status);
+      nextCluster.phases = translateStatusUpdateToSchedule(c.phases, data.status);
     }
     if (data.factory_id) {
       const factory = d.factories.find(f => f.id === data.factory_id);
-      if (factory) c.factory_name = factory.name;
+      if (factory) nextCluster.factory_name = factory.name;
     }
+    assertValidPhaseOrdering(nextCluster.phases);
+    Object.assign(c, nextCluster);
     updated = hydrateCluster({ ...c });
   });
   return delay(updated!);

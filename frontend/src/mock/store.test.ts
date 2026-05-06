@@ -10,6 +10,13 @@ async function importFreshStore() {
   return import('./store');
 }
 
+function persistLegacyDB(db: {
+  factories: Array<{ id: string; name: string; created_at: string }>;
+  clusters: Array<Record<string, unknown>>;
+}) {
+  localStorage.setItem('mosite_mock_db_v3', JSON.stringify(db));
+}
+
 function overwritePersistedClusterStatus(id: string, status: 'PO' | 'server_movein' | 'infra' | 'cpld' | 'sipd') {
   const raw = localStorage.getItem('mosite_mock_db_v4');
   if (!raw) {
@@ -66,6 +73,53 @@ describe('mock store derived schedule', () => {
       cpld: 0,
       sipd: 4,
     });
+  });
+
+  it('migrates a persisted v3 database before falling back to seeds', async () => {
+    localStorage.clear();
+    vi.resetModules();
+    persistLegacyDB({
+      factories: [{ id: 'legacy-f1', name: 'Legacy Factory', created_at: '2025-01-01T00:00:00Z' }],
+      clusters: [
+        {
+          id: 'legacy-c1',
+          name: 'Legacy Cluster',
+          type: 'k8s',
+          factory_id: 'legacy-f1',
+          factory_name: 'Legacy Factory',
+          status: 'infra',
+          phases: [
+            { phase: 'PO', date: '2026-05-01' },
+            { phase: 'server_movein', date: '2026-05-05' },
+            { phase: 'infra', date: '2026-05-09' },
+          ],
+          created_at: '2025-01-02T00:00:00Z',
+        },
+      ],
+    });
+
+    const { db_listFactories, db_getCluster } = await importFreshStore();
+
+    await expect(resolveAfterDelay(db_listFactories())).resolves.toEqual([
+      {
+        id: 'legacy-f1',
+        name: 'Legacy Factory',
+        created_at: '2025-01-01T00:00:00Z',
+      },
+    ]);
+    await expect(resolveAfterDelay(db_getCluster('legacy-c1'))).resolves.toMatchObject({
+      id: 'legacy-c1',
+      name: 'Legacy Cluster',
+      factory_id: 'legacy-f1',
+      status: 'server_movein',
+      phases: [
+        { phase: 'PO', date: '2026-05-01', status: 'completed' },
+        { phase: 'server_movein', date: '2026-05-05', status: 'in_progress' },
+        { phase: 'infra', date: '2026-05-09', status: 'estimated' },
+      ],
+    });
+    expect(localStorage.getItem('mosite_mock_db_v4')).toContain('legacy-c1');
+    expect(localStorage.getItem('mosite_mock_db_v3')).toBeNull();
   });
 
   it('creates a usable derived schedule for status-only cluster payloads', async () => {
@@ -152,6 +206,43 @@ describe('mock store derived schedule', () => {
     const reloaded = await resolveAfterDelay(db_getCluster('c3'));
 
     expect(reloaded.phases?.map((phase) => phase.status)).toEqual(['completed', 'in_progress', 'estimated']);
+  });
+
+  it('rejects creating a cluster whose milestone dates move backward', async () => {
+    const { db_createCluster, db_listClusters } = await importFreshStore();
+
+    await expect(
+      db_createCluster({
+        name: 'F1-K8S-OutOfOrder',
+        type: 'k8s',
+        factory_id: 'f1',
+        phases: [
+          { phase: 'PO', date: '2026-05-06' },
+          { phase: 'server_movein', date: '2026-05-05' },
+        ],
+      }),
+    ).rejects.toThrow('Move-In date must be on or after PO date.');
+
+    expect(
+      (await resolveAfterDelay(db_listClusters())).some((cluster) => cluster.name === 'F1-K8S-OutOfOrder'),
+    ).toBe(false);
+  });
+
+  it('rejects updating a cluster whose milestone dates move backward', async () => {
+    const { db_getCluster, db_updateCluster } = await importFreshStore();
+    const before = await resolveAfterDelay(db_getCluster('c3'));
+
+    await expect(
+      db_updateCluster('c3', {
+        phases: [
+          { phase: 'PO', date: '2026-05-06' },
+          { phase: 'server_movein', date: '2026-05-05' },
+        ],
+      }),
+    ).rejects.toThrow('Move-In date must be on or after PO date.');
+
+    const after = await resolveAfterDelay(db_getCluster('c3'));
+    expect(after.phases).toEqual(before.phases);
   });
 
   it('extends partial schedules when a later status-only update targets a missing phase', async () => {

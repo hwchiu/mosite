@@ -103,6 +103,18 @@ describe('date-derived schedule helpers', () => {
     expect(deriveClusterStatus(phases, new Date('2026-05-06T00:00:00Z'))).toBe('server_movein');
   });
 
+  it('uses PHASE_ORDER to break same-day ties for current status', () => {
+    const sameDayPhases: ClusterPhase[] = [
+      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'PO', date: '2026-05-05' },
+      { phase: 'infra', date: '2026-05-09' },
+    ];
+
+    expect(deriveClusterStatus(sameDayPhases, new Date('2026-05-06T00:00:00Z'))).toBe(
+      'server_movein',
+    );
+  });
+
   it('returns field errors when a milestone moves backward', () => {
     const phases: ClusterPhase[] = [
       { phase: 'PO', date: '2026-05-06' },
@@ -191,6 +203,42 @@ describe('resolveClusterCells', () => {
 
     expect(cells[0].isCurrentPhase).toBe(true);
     expect(cells[0].status).toBe('in_progress');
+  });
+
+  it('normalizes same-day cells by PHASE_ORDER regardless of input order', () => {
+    const sameDayPhases: ClusterPhase[] = [
+      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'PO', date: '2026-05-05' },
+      { phase: 'infra', date: '2026-05-19' },
+    ];
+
+    const cells = resolveClusterCells(
+      sameDayPhases,
+      ['2026-W19'],
+      'week',
+      new Date('2026-05-06T00:00:00Z'),
+    );
+
+    expect(cells[0]).toEqual({
+      phases: ['PO', 'server_movein'],
+      status: 'in_progress',
+      isCurrentPhase: true,
+    });
+  });
+
+  it('keeps same-day highlighting stable when input order changes in month mode', () => {
+    const ordered: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-05-05' },
+      { phase: 'server_movein', date: '2026-05-05' },
+      { phase: 'infra', date: '2026-05-19' },
+    ];
+    const reversed = [...ordered].reverse();
+
+    expect(
+      resolveClusterCells(ordered, ['2026-05'], 'month', new Date('2026-05-06T00:00:00Z')),
+    ).toEqual(
+      resolveClusterCells(reversed, ['2026-05'], 'month', new Date('2026-05-06T00:00:00Z')),
+    );
   });
 
   it('maps weeks to months in month mode', () => {

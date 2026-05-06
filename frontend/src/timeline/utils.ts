@@ -13,6 +13,15 @@ export function parseISOWeek(w: string): { year: number; week: number } {
 
 export const PHASE_ORDER: PhaseKey[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
 
+function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
+  const dateComparison = a.date.localeCompare(b.date);
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  return PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase);
+}
+
 export function compareWeeks(a: string, b: string): -1 | 0 | 1 {
   const pa = parseISOWeek(a);
   const pb = parseISOWeek(b);
@@ -68,7 +77,7 @@ export function formatBusinessWeekLabel(weekKey: string): string {
 
 export function deriveClusterStatus(phases: ClusterPhase[], today = new Date()): PhaseKey {
   const todayKey = today.toISOString().slice(0, 10);
-  const sorted = [...phases].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...phases].sort(comparePhasesBySchedule);
   const current = [...sorted].reverse().find((phase) => phase.date <= todayKey) ?? sorted[0];
   return current?.phase ?? 'PO';
 }
@@ -149,7 +158,7 @@ export function resolveClusterCells(
   }
 
   const normalize = (date: string) => (mode === 'month' ? dateToMonthKey(date) : dateToWeekKey(date));
-  const sorted = [...phases].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...phases].sort(comparePhasesBySchedule);
   const currentPhase = deriveClusterStatus(sorted, today);
 
   return columns.map((col) => {

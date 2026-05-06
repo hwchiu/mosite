@@ -4,6 +4,7 @@ import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
 const LS_KEY = 'mosite_mock_db_v4';
 const PHASE_ORDER: ClusterStatus[] = ['PO', 'server_movein', 'infra', 'cpld', 'sipd'];
+const COMPATIBILITY_PHASE_GAP_DAYS = 14;
 
 interface MockDB {
   factories: Factory[];
@@ -57,11 +58,14 @@ function translateStatusUpdateToSchedule(
   status: ClusterStatus,
   today = new Date(),
 ): ClusterPhase[] | undefined {
-  if (!phases?.length) {
-    return phases;
-  }
+  const basePhases = phases?.length
+    ? phases
+    : PHASE_ORDER.map((phase, index) => ({
+        phase,
+        date: shiftISODate(today.toISOString().slice(0, 10), index * COMPATIBILITY_PHASE_GAP_DAYS),
+      }));
 
-  const sorted = [...phases].sort(comparePhasesBySchedule);
+  const sorted = [...basePhases].sort(comparePhasesBySchedule);
   const targetPhase = sorted.find((phase) => phase.phase === status);
   if (!targetPhase) {
     return sorted;
@@ -175,7 +179,13 @@ export async function db_createCluster(data: Omit<Cluster, 'id' | 'created_at' |
   const db = getDB();
   const factory = db.factories.find(f => f.id === data.factory_id);
   if (!factory) throw new Error('Factory not found');
-  const cluster: Cluster = { ...data, id: uuid(), factory_name: factory.name, created_at: now() };
+  const cluster: Cluster = {
+    ...data,
+    phases: data.status && !data.phases ? translateStatusUpdateToSchedule(undefined, data.status) : data.phases,
+    id: uuid(),
+    factory_name: factory.name,
+    created_at: now(),
+  };
   mutate(d => d.clusters.push(cluster));
   return delay(hydrateCluster({ ...cluster }));
 }

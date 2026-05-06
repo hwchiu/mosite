@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db_getCluster, db_getDashboardSummary, db_listClusters, db_updateCluster, resetDB } from './store';
 
 async function resolveAfterDelay<T>(promise: Promise<T>): Promise<T> {
   await vi.advanceTimersByTimeAsync(200);
   return promise;
+}
+
+async function importFreshStore() {
+  vi.resetModules();
+  return import('./store');
 }
 
 function overwritePersistedClusterStatus(id: string, status: 'PO' | 'server_movein' | 'infra' | 'cpld' | 'sipd') {
@@ -26,21 +30,23 @@ function overwritePersistedClusterStatus(id: string, status: 'PO' | 'server_move
 }
 
 describe('mock store derived schedule', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
-    resetDB();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-06T00:00:00Z'));
+    const { resetDB } = await importFreshStore();
+    resetDB();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     localStorage.clear();
-    resetDB();
+    vi.resetModules();
   });
 
-  it('returns clusters with derived current statuses even when persisted status fields are stale', async () => {
+  it('returns clusters with derived current statuses after reloading stale persisted status fields from localStorage', async () => {
     overwritePersistedClusterStatus('c1', 'PO');
+    const { db_listClusters } = await importFreshStore();
 
     const clusters = await resolveAfterDelay(db_listClusters());
 
@@ -49,6 +55,7 @@ describe('mock store derived schedule', () => {
 
   it('counts dashboard cards from derived statuses instead of stale persisted status fields', async () => {
     overwritePersistedClusterStatus('c1', 'PO');
+    const { db_getDashboardSummary } = await importFreshStore();
 
     const summary = await resolveAfterDelay(db_getDashboardSummary());
 
@@ -61,7 +68,39 @@ describe('mock store derived schedule', () => {
     });
   });
 
+  it('creates a usable derived schedule for status-only cluster payloads', async () => {
+    const { db_createCluster, db_getCluster } = await importFreshStore();
+
+    const created = await resolveAfterDelay(
+      db_createCluster({
+        name: 'F1-K8S-New',
+        type: 'k8s',
+        factory_id: 'f1',
+        status: 'infra',
+      }),
+    );
+
+    expect(created.status).toBe('infra');
+    expect(created.phases?.map((phase) => phase.phase)).toEqual([
+      'PO',
+      'server_movein',
+      'infra',
+      'cpld',
+      'sipd',
+    ]);
+    expect(created.phases?.find((phase) => phase.phase === 'infra')?.status).toBe('in_progress');
+    expect(created.phases?.find((phase) => phase.phase === 'cpld')?.status).toBe('estimated');
+
+    const reloaded = await resolveAfterDelay(db_getCluster(created.id));
+
+    expect(reloaded.status).toBe('infra');
+    expect(reloaded.phases?.find((phase) => phase.phase === 'infra')?.status).toBe('in_progress');
+    expect(reloaded.phases?.find((phase) => phase.phase === 'cpld')?.status).toBe('estimated');
+  });
+
   it('keeps status-only updates stable across later reads by translating them into schedule changes', async () => {
+    const { db_getCluster, db_updateCluster } = await importFreshStore();
+
     const updated = await resolveAfterDelay(db_updateCluster('c1', { status: 'PO' }));
 
     expect(updated.status).toBe('PO');
@@ -76,6 +115,8 @@ describe('mock store derived schedule', () => {
   });
 
   it('accepts phase updates and normalizes the returned cluster from phase dates', async () => {
+    const { db_getCluster, db_updateCluster } = await importFreshStore();
+
     const updated = await resolveAfterDelay(
       db_updateCluster('c3', {
         phases: [

@@ -132,12 +132,16 @@ export default function Clusters() {
     if (error) return setFormError(error);
 
     setFormError('');
-    await createMut.mutateAsync({
-      name: form.name.trim(),
-      type: form.type as ClusterType,
-      factory_id: form.factory_id,
-      phases: toPhasePayload(form.phases),
-    });
+    try {
+      await createMut.mutateAsync({
+        name: form.name.trim(),
+        type: form.type as ClusterType,
+        factory_id: form.factory_id,
+        phases: toPhasePayload(form.phases),
+      });
+    } catch {
+      // onError surfaces the validation message for the form.
+    }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -149,15 +153,19 @@ export default function Clusters() {
     const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.phases ?? [];
 
     setFormError('');
-    await updateMut.mutateAsync({
-      id: editingId,
-      data: {
-        name: form.name.trim(),
-        type: form.type as ClusterType,
-        factory_id: form.factory_id,
-        phases: toPhasePayload(form.phases, existingPhases),
-      },
-    });
+    try {
+      await updateMut.mutateAsync({
+        id: editingId,
+        data: {
+          name: form.name.trim(),
+          type: form.type as ClusterType,
+          factory_id: form.factory_id,
+          phases: toPhasePayload(form.phases, existingPhases),
+        },
+      });
+    } catch {
+      // onError surfaces the validation message for the form.
+    }
   };
 
   const startEdit = (cluster: Cluster) => {

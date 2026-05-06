@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Clusters from './Clusters';
 import { resetDB } from '../mock/store';
-import { listClusters } from '../api/clusters';
+import * as clustersApi from '../api/clusters';
 import type { PhaseKey } from '../types';
 
 const queryClients: QueryClient[] = [];
@@ -121,7 +121,7 @@ describe('Clusters milestone date editing', () => {
 
     await screen.findByText('F10-K8S-New');
     await waitFor(async () => {
-      const created = (await listClusters()).find((cluster) => cluster.name === 'F10-K8S-New');
+      const created = (await clustersApi.listClusters()).find((cluster) => cluster.name === 'F10-K8S-New');
       expect(created?.phases?.map(({ phase, date }) => ({ phase, date }))).toEqual([
         { phase: 'PO', date: '2026-05-01' },
         { phase: 'server_movein', date: '2026-05-05' },
@@ -157,7 +157,7 @@ describe('Clusters milestone date editing', () => {
     fireEvent.click(within(form).getByRole('button', { name: 'Create' }));
 
     expect(await screen.findByText('Move-In date must be on or after PO date.')).toBeInTheDocument();
-    expect((await listClusters()).some((cluster) => cluster.name === 'F10-K8S-OutOfOrder')).toBe(false);
+    expect((await clustersApi.listClusters()).some((cluster) => cluster.name === 'F10-K8S-OutOfOrder')).toBe(false);
   });
 
   it('edits an existing cluster using milestone date inputs', async () => {
@@ -165,7 +165,7 @@ describe('Clusters milestone date editing', () => {
     renderClusters();
 
     const clusterName = 'F1-K8S-Prod';
-    const existing = (await listClusters()).find((cluster) => cluster.name === clusterName);
+    const existing = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
     expect(existing).toBeDefined();
 
     const row = (await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement;
@@ -181,7 +181,7 @@ describe('Clusters milestone date editing', () => {
     await clickAndWaitForQueryClientsToSettle(within(form).getByRole('button', { name: 'Update' }));
 
     await waitFor(async () => {
-      const updated = (await listClusters()).find((cluster) => cluster.name === clusterName);
+      const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
     await waitForEditFormToClose();
@@ -202,7 +202,7 @@ describe('Clusters milestone date editing', () => {
     renderClusters();
 
     const clusterName = 'F2-K8S-Prod';
-    const existing = (await listClusters()).find((cluster) => cluster.name === clusterName);
+    const existing = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
     const blockedPhase = existing?.phases?.find((phase) => phase.phase === 'infra');
     expect(blockedPhase).toMatchObject({
       date: '2026-06-04',
@@ -218,7 +218,7 @@ describe('Clusters milestone date editing', () => {
     await clickAndWaitForQueryClientsToSettle(within(form).getByRole('button', { name: 'Update' }));
 
     await waitFor(async () => {
-      const updated = (await listClusters()).find((cluster) => cluster.name === clusterName);
+      const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
       expect(updated?.phases?.find((phase) => phase.phase === 'cpld')?.date).toBe('2026-06-25');
       expect(updated?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
         date: '2026-06-04',
@@ -258,5 +258,49 @@ describe('Clusters milestone date editing', () => {
     expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="name"]').value).toBe('');
     expect(getNamedElement<HTMLSelectElement>(createForm, 'select[name="factory_id"]').value).toBe('');
     expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="PO"]').value).toBe('');
+  });
+
+  it('shows the create mutation error without leaking an unhandled rejection', async () => {
+    vi.spyOn(clustersApi, 'createCluster').mockRejectedValueOnce(new Error('Create failed'));
+    renderClusters();
+
+    await screen.findByText('F1-K8S-Prod');
+    fireEvent.click(screen.getByRole('button', { name: 'Create Cluster' }));
+
+    const form = getForm();
+    fireEvent.change(getNamedElement<HTMLSelectElement>(form, 'select[name="factory_id"]'), {
+      target: { value: 'f10' },
+    });
+    fireEvent.change(getNamedElement<HTMLInputElement>(form, 'input[name="name"]'), {
+      target: { value: 'F10-K8S-New' },
+    });
+    fireEvent.change(getNamedElement<HTMLSelectElement>(form, 'select[name="type"]'), {
+      target: { value: 'k8s' },
+    });
+    setPhaseDate(form, 'PO', '2026-05-01');
+    setPhaseDate(form, 'server_movein', '2026-05-05');
+    setPhaseDate(form, 'infra', '2026-05-09');
+    setPhaseDate(form, 'cpld', '2026-05-12');
+    setPhaseDate(form, 'sipd', '2026-05-16');
+
+    fireEvent.click(within(form).getByRole('button', { name: 'Create' }));
+
+    expect(await screen.findByText('Create failed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
+  });
+
+  it('shows the update mutation error without leaking an unhandled rejection', async () => {
+    vi.spyOn(clustersApi, 'updateCluster').mockRejectedValueOnce(new Error('Update failed'));
+    renderClusters();
+
+    const row = (await screen.findByText('F1-K8S-Prod')).closest('tr') as HTMLTableRowElement;
+    fireEvent.click(within(row).getByTitle('Edit'));
+
+    const form = getForm();
+    setPhaseDate(form, 'infra', '2026-03-15');
+    fireEvent.click(within(form).getByRole('button', { name: 'Update' }));
+
+    expect(await screen.findByText('Update failed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
   });
 });

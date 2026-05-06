@@ -8,7 +8,9 @@ const isoWeekToDate = (isoWeek: string): string => {
   const dayOfWeek = jan4.getUTCDay() || 7;
   const monday = new Date(jan4);
   monday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1) + (week - 1) * 7);
-  return monday.toISOString().slice(0, 10);
+  const thursday = new Date(monday);
+  thursday.setUTCDate(monday.getUTCDate() + 3);
+  return thursday.toISOString().slice(0, 10);
 };
 
 export const SEED_FACTORIES: Factory[] = [
@@ -357,4 +359,3 @@ export const SEED_CLUSTERS: Cluster[] = [
     created_at: '2025-10-10T08:00:00Z',
   },
 ];
-

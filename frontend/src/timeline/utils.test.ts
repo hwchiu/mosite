@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { SEED_CLUSTERS } from '../mock/seed';
 import {
   parseISOWeek,
   compareWeeks,
@@ -91,6 +92,26 @@ describe('date-derived schedule helpers', () => {
   it('maps an ISO date to week and month keys', () => {
     expect(dateToWeekKey('2026-01-01')).toBe('2026-W01');
     expect(dateToMonthKey('2026-05-05')).toBe('2026-05');
+  });
+
+  it('preserves legacy month mapping when seed data is backfilled from ISO weeks', () => {
+    const boundaryCluster = SEED_CLUSTERS.find((cluster) => cluster.id === 'c4');
+    if (!boundaryCluster) {
+      throw new Error('Expected boundary seed cluster c4 to exist');
+    }
+    if (!boundaryCluster.phases) {
+      throw new Error('Expected boundary seed cluster c4 to include phases');
+    }
+
+    const boundaryPhase = boundaryCluster.phases.find((phase) => phase.phase === 'PO');
+    if (!boundaryPhase) {
+      throw new Error('Expected boundary seed cluster c4 to include a PO phase');
+    }
+
+    const migratedWeekBoundaryDate = boundaryPhase.date;
+
+    expect(migratedWeekBoundaryDate).toBe('2026-04-02');
+    expect(dateToMonthKey(migratedWeekBoundaryDate)).toBe('2026-04');
   });
 
   it('derives the current cluster status from milestone dates', () => {

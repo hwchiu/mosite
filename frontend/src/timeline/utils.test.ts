@@ -212,6 +212,26 @@ describe('resolveClusterCells', () => {
     });
   });
 
+  it('keeps overdue blocked final phases marked as current', () => {
+    const blockedPhases: ClusterPhase[] = [
+      { phase: 'PO', date: '2026-04-20', status: 'completed' },
+      { phase: 'server_movein', date: '2026-05-05', status: 'blocked' },
+    ];
+
+    const cells = resolveClusterCells(
+      blockedPhases,
+      ['2026-W19'],
+      'week',
+      new Date('2026-05-06T00:00:00Z'),
+    );
+
+    expect(cells[0]).toEqual({
+      phases: ['server_movein'],
+      status: 'blocked',
+      isCurrentPhase: true,
+    });
+  });
+
   it('returns empty cell for columns before any phase', () => {
     const cols = ['2026-W10'];
     const cells = resolveClusterCells(phases, cols, 'week');

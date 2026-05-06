@@ -161,7 +161,9 @@ export function resolveClusterCells(
   const sorted = [...phases].sort(comparePhasesBySchedule);
   const todayKey = today.toISOString().slice(0, 10);
   const currentPhase = deriveClusterStatus(sorted, today);
-  const activePhase = todayKey > sorted[sorted.length - 1].date ? null : currentPhase;
+  const finalPhase = sorted[sorted.length - 1];
+  const activePhase =
+    todayKey > finalPhase.date && finalPhase.status !== 'blocked' ? null : currentPhase;
 
   return columns.map((col) => {
     const matchingPhases: PhaseKey[] = [];

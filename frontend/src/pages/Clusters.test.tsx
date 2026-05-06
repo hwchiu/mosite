@@ -171,4 +171,25 @@ describe('Clusters milestone date editing', () => {
       });
     });
   });
+
+  it('switches from editing to a blank create form when Create Cluster is clicked', async () => {
+    renderClusters();
+
+    const clusterName = 'F1-K8S-Prod';
+    const row = (await screen.findByText(clusterName)).closest('tr') as HTMLTableRowElement;
+    fireEvent.click(within(row).getByTitle('Edit'));
+
+    const editForm = getForm();
+    expect(getNamedElement<HTMLInputElement>(editForm, 'input[name="name"]').value).toBe(clusterName);
+    expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Cluster' }));
+
+    const createForm = getForm();
+    expect(screen.queryByRole('button', { name: 'Update' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
+    expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="name"]').value).toBe('');
+    expect(getNamedElement<HTMLSelectElement>(createForm, 'select[name="factory_id"]').value).toBe('');
+    expect(getNamedElement<HTMLInputElement>(createForm, 'input[name="PO"]').value).toBe('');
+  });
 });

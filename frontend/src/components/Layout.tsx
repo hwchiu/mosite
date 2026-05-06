@@ -59,7 +59,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm shrink-0">
+        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3 shadow-sm shrink-0">
           <button
             onClick={() => setSidebarOpen((prev) => !prev)}
             aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}

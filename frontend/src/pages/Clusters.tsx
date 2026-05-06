@@ -76,7 +76,7 @@ function validateForm(form: ClusterForm): string {
 
 function formFromCluster(cluster: Cluster): ClusterForm {
   const phases = emptyPhases();
-  cluster.phases?.forEach((phase) => {
+  cluster.operations?.[0]?.phases?.forEach((phase) => {
     phases[phase.phase] = phase.date;
   });
 
@@ -163,7 +163,7 @@ export default function Clusters() {
     const error = validateForm(form);
     if (error) return setFormError(error);
 
-    const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.phases ?? [];
+    const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.operations?.[0]?.phases ?? [];
 
     setFormError('');
     try {

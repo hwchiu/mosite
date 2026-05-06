@@ -123,7 +123,7 @@ describe('Clusters milestone date editing', () => {
     await screen.findByText('F10-K8S-New');
     await waitFor(async () => {
       const created = (await clustersApi.listClusters()).find((cluster) => cluster.name === 'F10-K8S-New');
-      expect(created?.phases?.map(({ phase, date }) => ({ phase, date }))).toEqual([
+      expect(created?.operations?.[0]?.phases?.map(({ phase, date }) => ({ phase, date }))).toEqual([
         { phase: 'purchase', date: '2026-05-01' },
         { phase: 'movein', date: '2026-05-05' },
         { phase: 'infra', date: '2026-05-09' },
@@ -176,7 +176,7 @@ describe('Clusters milestone date editing', () => {
 
     const form = getForm();
     expect(getNamedElement<HTMLInputElement>(form, 'input[name="purchase"]').value).toBe(
-      existing!.phases!.find((phase) => phase.phase === 'purchase')!.date,
+      existing!.operations![0].phases.find((phase) => phase.phase === 'purchase')!.date,
     );
     expect(form.querySelector('select[name="status"]')).toBeNull();
 
@@ -185,7 +185,7 @@ describe('Clusters milestone date editing', () => {
 
     await waitFor(async () => {
       const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-      expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
+      expect(updated?.operations?.[0]?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
     await waitForEditFormToClose();
 
@@ -206,7 +206,7 @@ describe('Clusters milestone date editing', () => {
 
     const clusterName = 'F2-K8S-Prod';
     const existing = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-    const blockedPhase = existing?.phases?.find((phase) => phase.phase === 'infra');
+    const blockedPhase = existing?.operations?.[0]?.phases?.find((phase) => phase.phase === 'infra');
     expect(blockedPhase).toMatchObject({
       date: '2026-06-04',
       status: 'blocked',
@@ -222,8 +222,8 @@ describe('Clusters milestone date editing', () => {
 
     await waitFor(async () => {
       const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-      expect(updated?.phases?.find((phase) => phase.phase === 'cluster')?.date).toBe('2026-06-25');
-      expect(updated?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
+      expect(updated?.operations?.[0]?.phases?.find((phase) => phase.phase === 'cluster')?.date).toBe('2026-06-25');
+      expect(updated?.operations?.[0]?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
         date: '2026-06-04',
         status: 'blocked',
         note: '機器延遲到貨，預計 W23 恢復',

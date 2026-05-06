@@ -284,8 +284,6 @@ export const SEED_CLUSTERS: Cluster[] = [
   // F6: 2 clusters
   {
     id: 'c14', name: 'F6-K8S-Prod', type: 'k8s',
-  {
-    id: 'c14', name: 'F6-K8S-Prod', type: 'k8s',
     factory_id: 'f6', factory_name: 'F6', status: 'cluster',
     operations: [
       initOp('c14', [

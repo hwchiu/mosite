@@ -1,5 +1,9 @@
-import type { Cluster, ClusterPhase, ClusterType } from '../types';
-import { db_listClusters, db_createCluster, db_getCluster, db_updateCluster, db_deleteCluster } from '../mock/store';
+import type { Cluster, ClusterPhase, ClusterType, OperationType } from '../types';
+import {
+  db_listClusters, db_createCluster, db_getCluster, db_updateCluster, db_deleteCluster,
+  db_addOperation, db_updateOperation, db_deleteOperation,
+  type AddOperationData,
+} from '../mock/store';
 
 export interface ClusterListParams {
   factory_id?: string;
@@ -35,4 +39,26 @@ export async function updateCluster(
 
 export async function deleteCluster(id: string): Promise<void> {
   return db_deleteCluster(id);
+}
+
+export interface CreateOperationData {
+  type: OperationType;
+  label?: string;
+  phases: ClusterPhase[];
+}
+
+export async function addOperation(clusterId: string, data: CreateOperationData): Promise<Cluster> {
+  return db_addOperation(clusterId, data);
+}
+
+export async function updateOperation(
+  clusterId: string,
+  operationId: string,
+  phases: ClusterPhase[],
+): Promise<Cluster> {
+  return db_updateOperation(clusterId, operationId, phases);
+}
+
+export async function deleteOperation(clusterId: string, operationId: string): Promise<void> {
+  return db_deleteOperation(clusterId, operationId);
 }

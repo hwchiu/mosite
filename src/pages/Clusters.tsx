@@ -192,10 +192,9 @@ export default function Clusters() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
-    const error = validateForm(form);
-    if (error) return setFormError(error);
-
-    const existingPhases = clusters.find((cluster) => cluster.id === editingId)?.operations?.[0]?.phases ?? [];
+    if (!form.name.trim()) return setFormError('Name is required');
+    if (!form.type) return setFormError('Type is required');
+    if (!form.factory_id) return setFormError('Factory is required');
 
     setFormError('');
     try {
@@ -205,7 +204,6 @@ export default function Clusters() {
           name: form.name.trim(),
           type: form.type as ClusterType,
           factory_id: form.factory_id,
-          phases: toPhasePayload(form.phases, 'init', existingPhases),
         },
       });
     } catch { /* onError handles */ }
@@ -231,7 +229,6 @@ export default function Clusters() {
     setFormError('');
   };
 
-  const clusters = clustersQ.data ?? [];
   const factories = factoriesQ.data ?? [];
 
   const filteredClusters = useMemo(() => {
@@ -328,34 +325,36 @@ export default function Clusters() {
                 </select>
               </div>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Milestone Dates</h3>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-                {INIT_PHASE_ORDER.map((phase) => (
-                  <div key={phase}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {PHASE_LABELS[phase]} Date
-                    </label>
-                    <input
-                      name={phase}
-                      type="date"
-                      value={form.phases[phase] ?? ''}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          phases: {
-                            ...form.phases,
-                            [phase]: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      required
-                    />
-                  </div>
-                ))}
+            {!editingId && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Milestone Dates</h3>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+                  {INIT_PHASE_ORDER.map((phase) => (
+                    <div key={phase}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {PHASE_LABELS[phase]} Date
+                      </label>
+                      <input
+                        name={phase}
+                        type="date"
+                        value={form.phases[phase] ?? ''}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            phases: {
+                              ...form.phases,
+                              [phase]: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex gap-2 justify-end">
               <button
                 type="button"

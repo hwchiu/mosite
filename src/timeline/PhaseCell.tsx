@@ -63,7 +63,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
         background: buildGradient(cell.phases),
         opacity: cell.status === 'completed' ? 0.3 : 1,
         borderLeft,
-        ...(cell.status === 'blocked' && cell.isCurrentPhase ? { outline: '2px solid #6366f1', outlineOffset: '-2px' } : {}),
+        ...(cell.status === 'blocked' ? { outline: '2px solid #f87171', outlineOffset: '-2px' } : {}),
       }}
       title={cell.status === 'blocked' ? 'BLOCKED' : undefined}
     />

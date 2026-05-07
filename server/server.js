@@ -102,7 +102,13 @@ function validatePhaseDates(phases) {
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://momo.hwchiu.com',
+    'https://momo.hwchiu.com',
+    /^http:\/\/localhost(:\d+)?$/,
+  ],
+}));
 app.use(express.json());
 
 // ── Factories ─────────────────────────────────────────────────────────────────
@@ -262,6 +268,63 @@ app.delete('/api/clusters/:id/operations/:opId', (req, res) => {
 
   cluster.operations = cluster.operations.filter(o => o.id !== req.params.opId);
   db.clusters[idx] = cluster;
+  saveDB(db);
+  res.status(204).send();
+});
+
+// ── Reschedule Notes ──────────────────────────────────────────────────────────────
+
+app.post('/api/clusters/:id/operations/:opId/notes', (req, res) => {
+  const db = loadDB();
+  const cluster = db.clusters.find(c => c.id === req.params.id);
+  if (!cluster) return res.status(404).json({ message: 'Cluster not found' });
+  const op = (cluster.operations ?? []).find(o => o.id === req.params.opId);
+  if (!op) return res.status(404).json({ message: 'Operation not found' });
+  const { note } = req.body;
+  if (!note || typeof note !== 'string' || !note.trim()) {
+    return res.status(400).json({ message: 'note is required' });
+  }
+  const entry = {
+    id: uuidv4(),
+    date: new Date().toISOString().slice(0, 10),
+    note: note.trim(),
+  };
+  op.reschedule_notes = [...(op.reschedule_notes ?? []), entry];
+  saveDB(db);
+  res.status(201).json(entry);
+});
+
+app.put('/api/clusters/:id/operations/:opId/notes/:noteId', (req, res) => {
+  const db = loadDB();
+  const cluster = db.clusters.find(c => c.id === req.params.id);
+  if (!cluster) return res.status(404).json({ message: 'Cluster not found' });
+  const op = (cluster.operations ?? []).find(o => o.id === req.params.opId);
+  if (!op) return res.status(404).json({ message: 'Operation not found' });
+  const noteIdx = (op.reschedule_notes ?? []).findIndex(n => n.id === req.params.noteId);
+  if (noteIdx < 0) return res.status(404).json({ message: 'Note not found' });
+  const { note, date } = req.body;
+  if (!note || typeof note !== 'string' || !note.trim()) {
+    return res.status(400).json({ message: 'note is required' });
+  }
+  const updated = {
+    ...op.reschedule_notes[noteIdx],
+    note: note.trim(),
+    ...(date ? { date } : {}),
+  };
+  op.reschedule_notes = op.reschedule_notes.map((n, i) => i === noteIdx ? updated : n);
+  saveDB(db);
+  res.json(updated);
+});
+
+app.delete('/api/clusters/:id/operations/:opId/notes/:noteId', (req, res) => {
+  const db = loadDB();
+  const cluster = db.clusters.find(c => c.id === req.params.id);
+  if (!cluster) return res.status(404).json({ message: 'Cluster not found' });
+  const op = (cluster.operations ?? []).find(o => o.id === req.params.opId);
+  if (!op) return res.status(404).json({ message: 'Operation not found' });
+  const noteExists = (op.reschedule_notes ?? []).some(n => n.id === req.params.noteId);
+  if (!noteExists) return res.status(404).json({ message: 'Note not found' });
+  op.reschedule_notes = (op.reschedule_notes ?? []).filter(n => n.id !== req.params.noteId);
   saveDB(db);
   res.status(204).send();
 });

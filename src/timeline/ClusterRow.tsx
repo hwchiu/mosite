@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil, ChevronRight, ChevronDown } from 'lucide-react';
 import PhaseCell from './PhaseCell';
+import RescheduleTooltip from './RescheduleTooltip';
 import { resolveClusterCells } from './utils';
 import type { Cluster, ClusterOperation } from '../types';
 
@@ -41,6 +42,7 @@ function OperationRow({ operation, label, columns, mode, nowColumn, onEdit, isCh
               {operation.type === 'init' ? 'init' : 'expansion'}
             </div>
           )}
+          <RescheduleTooltip notes={operation.reschedule_notes ?? []} />
         </div>
         {onEdit && (
           <Pencil size={11} className="text-gray-300 group-hover:text-indigo-500 flex-shrink-0 mr-1 transition-colors" />

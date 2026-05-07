@@ -21,6 +21,12 @@ export interface Factory {
 
 export type OperationType = 'init' | 'expansion';
 
+export interface RescheduleNote {
+  id: string;
+  date: string;   // ISO date string "YYYY-MM-DD"
+  note: string;
+}
+
 // Init uses all 6 phases; Expansion omits 'platform'
 export const INIT_PHASES: PhaseKey[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
 export const EXPANSION_PHASES: PhaseKey[] = ['purchase', 'movein', 'infra', 'cluster', 'release'];
@@ -31,6 +37,7 @@ export interface ClusterOperation {
   label?: string;
   phases: ClusterPhase[];
   created_at: string;
+  reschedule_notes?: RescheduleNote[];
 }
 
 export interface Cluster {

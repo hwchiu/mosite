@@ -1,4 +1,4 @@
-import React from 'react';
+import type { CSSProperties } from 'react';
 import { formatBusinessWeekLabel } from './utils';
 
 interface Props {
@@ -6,7 +6,7 @@ interface Props {
   nowColumn: string;
 }
 
-const NOW_BORDER_STYLE: React.CSSProperties = { borderLeft: '2px dashed #a5b4fc' };
+const NOW_BORDER_STYLE: CSSProperties = { borderLeft: '2px dashed #a5b4fc' };
 
 export default function WeekHeader({ columns, nowColumn }: Props) {
   return (

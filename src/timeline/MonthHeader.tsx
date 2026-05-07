@@ -1,4 +1,4 @@
-import React from 'react';
+import type { CSSProperties } from 'react';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -7,7 +7,7 @@ interface Props {
   nowColumn: string;   // e.g. "2026-05"
 }
 
-const NOW_BORDER_STYLE: React.CSSProperties = { borderLeft: '2px dashed #a5b4fc' };
+const NOW_BORDER_STYLE: CSSProperties = { borderLeft: '2px dashed #a5b4fc' };
 
 export default function MonthHeader({ columns, nowColumn }: Props) {
   return (

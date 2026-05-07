@@ -1,4 +1,4 @@
-import type { Cluster, ClusterPhase, ClusterType, OperationType } from '../types';
+import type { Cluster, ClusterPhase, ClusterType, OperationType, RescheduleNote } from '../types';
 import client from './client';
 
 export interface ClusterListParams {
@@ -66,4 +66,39 @@ export async function updateOperation(
 
 export async function deleteOperation(clusterId: string, operationId: string): Promise<void> {
   await client.delete(`/clusters/${clusterId}/operations/${operationId}`);
+}
+
+export async function addRescheduleNote(
+  clusterId: string,
+  operationId: string,
+  note: string,
+): Promise<RescheduleNote> {
+  const { data } = await client.post<RescheduleNote>(
+    `/clusters/${clusterId}/operations/${operationId}/notes`,
+    { note },
+  );
+  return data;
+}
+
+export async function updateRescheduleNote(
+  clusterId: string,
+  operationId: string,
+  noteId: string,
+  note: string,
+): Promise<RescheduleNote> {
+  const { data } = await client.put<RescheduleNote>(
+    `/clusters/${clusterId}/operations/${operationId}/notes/${noteId}`,
+    { note },
+  );
+  return data;
+}
+
+export async function deleteRescheduleNote(
+  clusterId: string,
+  operationId: string,
+  noteId: string,
+): Promise<void> {
+  await client.delete(
+    `/clusters/${clusterId}/operations/${operationId}/notes/${noteId}`,
+  );
 }

@@ -29,7 +29,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
   if (cell.phases.length === 0) {
     return (
       <div
-        className="h-5 rounded-sm"
+        className="h-5"
         style={{ background: isNowColumn ? 'rgba(99,102,241,0.06)' : 'transparent' }}
       />
     );
@@ -37,7 +37,7 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
 
   return (
     <div
-      className="h-5 rounded-sm"
+      className="h-5"
       style={{
         background: buildGradient(cell.phases),
         outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,

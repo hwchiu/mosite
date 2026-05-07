@@ -4,6 +4,7 @@ export interface ResolvedPhaseCell {
   phases: PhaseKey[];
   status: PhaseStatus | 'empty';
   isCurrentPhase: boolean;
+  isDelayed: boolean;
 }
 
 export function parseISOWeek(w: string): { year: number; week: number } {
@@ -143,7 +144,7 @@ export function resolveClusterCells(
   today = new Date(),
 ): ResolvedPhaseCell[] {
   if (!phases.length) {
-    return columns.map(() => ({ phases: [], status: 'empty', isCurrentPhase: false }));
+    return columns.map(() => ({ phases: [], status: 'empty', isCurrentPhase: false, isDelayed: false }));
   }
 
   const normalize = (date: string) => (mode === 'month' ? dateToMonthKey(date) : dateToWeekKey(date));
@@ -158,6 +159,7 @@ export function resolveClusterCells(
     const matchingPhases: PhaseKey[] = [];
     let cellStatus: PhaseStatus | 'empty' = 'empty';
     let isCurrentPhase = false;
+    let isDelayed = false;
 
     for (let i = 0; i < sorted.length; i++) {
       const phase = sorted[i];
@@ -188,6 +190,9 @@ export function resolveClusterCells(
         if (phase.phase === activePhase) {
           isCurrentPhase = true;
         }
+        if (nextStatus === 'in_progress' && phase.date < todayKey) {
+          isDelayed = true;
+        }
       }
     }
 
@@ -195,6 +200,7 @@ export function resolveClusterCells(
       phases: matchingPhases,
       status: matchingPhases.length ? cellStatus : 'empty',
       isCurrentPhase,
+      isDelayed,
     };
   });
 }

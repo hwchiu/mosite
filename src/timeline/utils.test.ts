@@ -233,6 +233,7 @@ describe('resolveClusterCells', () => {
       phases: ['movein'],
       status: 'completed',
       isCurrentPhase: false,
+      isDelayed: false,
     });
   });
 
@@ -253,6 +254,7 @@ describe('resolveClusterCells', () => {
       phases: ['movein'],
       status: 'blocked',
       isCurrentPhase: true,
+      isDelayed: false,
     });
   });
 
@@ -308,6 +310,7 @@ describe('resolveClusterCells', () => {
       phases: ['purchase', 'movein'],
       status: 'in_progress',
       isCurrentPhase: true,
+      isDelayed: true,
     });
   });
 
@@ -366,5 +369,55 @@ describe('resolveClusterCells', () => {
 
     expect(cells[0].phases).toEqual(['movein', 'infra']);
     expect(cells[0].status).toBe('blocked');
+  });
+
+  it('marks in_progress cell as delayed when phase date is before today', () => {
+    const phases: ClusterPhase[] = [
+      { phase: 'purchase', date: '2026-04-01' },
+      { phase: 'movein',   date: '2026-04-20' }, // past — still active
+      { phase: 'infra',    date: '2026-06-01' },
+    ];
+    const cells = resolveClusterCells(
+      phases,
+      ['2026-W17'],
+      'week',
+      new Date('2026-05-06T00:00:00Z'),
+    );
+    const moveinCell = cells.find(c => c.phases.includes('movein'));
+    expect(moveinCell?.isDelayed).toBe(true);
+  });
+
+  it('does not mark in_progress cell as delayed when phase date equals today', () => {
+    const phases: ClusterPhase[] = [
+      { phase: 'purchase', date: '2026-04-01' },
+      { phase: 'movein',   date: '2026-05-06' }, // exactly today
+      { phase: 'infra',    date: '2026-06-01' },
+    ];
+    const cells = resolveClusterCells(
+      phases,
+      ['2026-W19'],
+      'week',
+      new Date('2026-05-06T00:00:00Z'),
+    );
+    const moveinCell = cells.find(c => c.phases.includes('movein'));
+    expect(moveinCell?.isDelayed).toBe(false);
+  });
+
+  it('does not mark completed or estimated cells as delayed', () => {
+    const phases: ClusterPhase[] = [
+      { phase: 'purchase', date: '2026-04-01' },
+      { phase: 'movein',   date: '2026-04-20' },
+      { phase: 'infra',    date: '2026-06-01' },
+    ];
+    const cells = resolveClusterCells(
+      phases,
+      ['2026-W14', '2026-W23'],
+      'week',
+      new Date('2026-05-06T00:00:00Z'),
+    );
+    const purchaseCell = cells.find(c => c.phases.includes('purchase'));
+    const infraCell    = cells.find(c => c.phases.includes('infra'));
+    expect(purchaseCell?.isDelayed).toBe(false);
+    expect(infraCell?.isDelayed).toBe(false);
   });
 });

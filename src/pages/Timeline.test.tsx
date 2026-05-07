@@ -45,13 +45,13 @@ describe('Timeline month view timezone alignment', () => {
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '月' }));
-    expect(screen.getByText('Jan')).toHaveClass('bg-indigo-50');
+    expect(screen.getByText('TODAY').closest('div')).toHaveClass('bg-indigo-50');
 
     fireEvent.click(screen.getByRole('button', { name: '◀' }));
     expect(screen.getByText('Jan')).not.toHaveClass('bg-indigo-50');
 
     fireEvent.click(screen.getByRole('button', { name: '今年' }));
-    expect(screen.getByText('Jan')).toHaveClass('bg-indigo-50');
+    expect(screen.getByText('TODAY').closest('div')).toHaveClass('bg-indigo-50');
   });
 
   it('does not show estimated or blocked legend entries', async () => {

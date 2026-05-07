@@ -40,9 +40,6 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
       className="h-5"
       style={{
         background: buildGradient(cell.phases),
-        outline: cell.isCurrentPhase ? '2px solid #6366f1' : undefined,
-        outlineOffset: '-1px',
-        boxSizing: 'border-box',
       }}
       title={cell.status === 'blocked' ? 'BLOCKED' : undefined}
     />

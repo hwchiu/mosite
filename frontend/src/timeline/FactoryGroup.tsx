@@ -20,11 +20,6 @@ function currentOpPhases(c: Cluster) {
 export default function FactoryGroup({ factory, clusters, columns, mode, nowColumn, defaultExpanded = true, onEdit }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
-  const hasBlocked = clusters.some(c =>
-    currentOpPhases(c).some(p => p.status === 'blocked') ||
-    c.operations?.some(op => op.phases.some(p => p.status === 'blocked'))
-  );
-
   // Phase summary counts
   const phaseSummary = clusters.reduce((acc, c) => {
     const phases = currentOpPhases(c);
@@ -57,7 +52,7 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
           </span>
           <span className="font-bold text-[12px] text-gray-800">{factory.name} 廠區</span>
           <span className="text-[9px] text-gray-500 bg-gray-200 px-1.5 rounded-full">{clusters.length} clusters</span>
-          {hasBlocked && <span className="text-[10px] text-red-500">⚠ BLOCKED</span>}
+
         </div>
         <div className="flex gap-2 px-2 flex-wrap">
           {Object.entries(phaseSummary).map(([phase, count]) => (

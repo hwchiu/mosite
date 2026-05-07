@@ -1,9 +1,12 @@
+import React from 'react';
 import { formatBusinessWeekLabel } from './utils';
 
 interface Props {
   columns: string[];   // e.g. ["2026-W16", "2026-W17", ...]
   nowColumn: string;
 }
+
+const NOW_BORDER_STYLE: React.CSSProperties = { borderLeft: '2px dashed #a5b4fc' };
 
 export default function WeekHeader({ columns, nowColumn }: Props) {
   return (
@@ -18,10 +21,17 @@ export default function WeekHeader({ columns, nowColumn }: Props) {
           <div
             key={col}
             className={`py-1.5 text-center text-[9px] border-l border-gray-100 ${
-              isNow ? 'text-indigo-700 font-bold bg-indigo-50' : 'text-gray-700 font-semibold'
+              isNow ? 'bg-indigo-50' : 'text-gray-700 font-semibold'
             }`}
+            style={isNow ? NOW_BORDER_STYLE : undefined}
           >
-            <div>{isNow ? 'NOW' : formatBusinessWeekLabel(col)}</div>
+            {isNow ? (
+              <span className="inline-block bg-indigo-500 text-white rounded-full px-1.5 py-px text-[8px] font-bold leading-tight">
+                TODAY
+              </span>
+            ) : (
+              formatBusinessWeekLabel(col)
+            )}
           </div>
         );
       })}

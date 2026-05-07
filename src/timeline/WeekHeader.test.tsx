@@ -17,7 +17,7 @@ describe('WeekHeader', () => {
     expect(screen.queryByText('W20')).not.toBeInTheDocument();
   });
 
-  it('keeps the NOW marker on the current week column', () => {
+  it('keeps the TODAY marker on the current week column', () => {
     render(
       <WeekHeader
         columns={['2026-W18', '2026-W19', '2026-W20']}
@@ -25,6 +25,6 @@ describe('WeekHeader', () => {
       />,
     );
 
-    expect(screen.getByText('NOW')).toBeInTheDocument();
+    expect(screen.getByText('TODAY')).toBeInTheDocument();
   });
 });

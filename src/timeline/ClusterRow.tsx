@@ -23,6 +23,7 @@ function OperationRow({ operation, label, columns, mode, nowColumn, onEdit, isCh
       className={`grid gap-px items-center py-0.5 border-b border-gray-100 ${isChild ? 'bg-gray-50/50' : ''}`}
       style={{
         gridTemplateColumns: `180px repeat(${columns.length}, 1fr)`,
+        // Delayed state intentionally overrides the child gray background
         ...(hasDelayed ? { background: '#fff5f5' } : {}),
       }}
     >

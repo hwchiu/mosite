@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, X, FilterX, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Pencil, X, FilterX, ChevronRight, ChevronDown } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { listClusters, createCluster, updateCluster, deleteCluster, addOperation, updateOperation, deleteOperation } from '../api/clusters';
+import { listClusters, createCluster, updateCluster, deleteCluster, addOperation, updateOperation, deleteOperation, addRescheduleNote, updateRescheduleNote, deleteRescheduleNote } from '../api/clusters';
 import { listFactories } from '../api/factories';
 import { validatePhaseDates } from '../timeline/utils';
-import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey, ClusterOperation, OperationType } from '../types';
+import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey, ClusterOperation, OperationType, RescheduleNote } from '../types';
 import { INIT_PHASES, EXPANSION_PHASES } from '../types';
 
 const STATUS_CONFIG: Record<ClusterStatus, { label: string; bg: string; text: string; border: string; dotColor: string }> = {
@@ -112,7 +112,12 @@ export default function Clusters() {
   const [opEditForm, setOpEditForm] = useState<PhaseForm>(emptyPhaseForm('init'));
   const [opEditError, setOpEditError] = useState('');
 
+  const [notesModal, setNotesModal] = useState<{ clusterId: string; op: ClusterOperation } | null>(null);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [editingNote, setEditingNote] = useState<{ id: string; text: string } | null>(null);
+
   const clustersQ = useQuery({ queryKey: ['clusters'], queryFn: () => listClusters() });
+  const clusters = clustersQ.data;
   const factoriesQ = useQuery({ queryKey: ['factories'], queryFn: listFactories });
 
   const createMut = useMutation({
@@ -172,6 +177,32 @@ export default function Clusters() {
     mutationFn: ({ clusterId, opId }: { clusterId: string; opId: string }) =>
       deleteOperation(clusterId, opId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clusters'] }),
+  });
+
+  const addNoteMut = useMutation({
+    mutationFn: ({ clusterId, opId, note }: { clusterId: string; opId: string; note: string }) =>
+      addRescheduleNote(clusterId, opId, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      setNewNoteText('');
+    },
+  });
+
+  const updateNoteMut = useMutation({
+    mutationFn: ({ clusterId, opId, noteId, note }: { clusterId: string; opId: string; noteId: string; note: string }) =>
+      updateRescheduleNote(clusterId, opId, noteId, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      setEditingNote(null);
+    },
+  });
+
+  const deleteNoteMut = useMutation({
+    mutationFn: ({ clusterId, opId, noteId }: { clusterId: string; opId: string; noteId: string }) =>
+      deleteRescheduleNote(clusterId, opId, noteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clusters'] });
+    },
   });
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -543,6 +574,13 @@ export default function Clusters() {
                                   </div>
                                   <div className="flex gap-2">
                                     <button
+                                      onClick={() => { setNotesModal({ clusterId: cluster.id, op }); setNewNoteText(''); setEditingNote(null); }}
+                                      className="p-1 text-gray-400 hover:text-indigo-500 rounded"
+                                      title="Reschedule notes"
+                                    >
+                                      <span className="text-xs">💬{(op.reschedule_notes?.length ?? 0) > 0 ? ` ${op.reschedule_notes!.length}` : ''}</span>
+                                    </button>
+                                    <button
                                       title="Edit operation phases"
                                       onClick={() => {
                                         const opForm: PhaseForm = Object.fromEntries(op.phases.map(p => [p.phase, p.date]));
@@ -711,6 +749,107 @@ export default function Clusters() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Reschedule Notes Modal */}
+      {notesModal && (() => {
+        const { clusterId } = notesModal;
+        const freshCluster = clusters?.find(c => c.id === clusterId);
+        const op = freshCluster?.operations?.find(o => o.id === notesModal.op.id) ?? notesModal.op;
+        const notes: RescheduleNote[] = op.reschedule_notes ?? [];
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-[480px] max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-800">
+                  Reschedule Notes — {op.type === 'init' ? 'Init' : op.label ?? 'Expansion'}
+                </h2>
+                <button onClick={() => setNotesModal(null)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Existing notes list */}
+              <div className="flex-1 overflow-y-auto space-y-2 mb-4 min-h-0">
+                {notes.length === 0 && (
+                  <p className="text-xs text-gray-400 italic">No notes yet.</p>
+                )}
+                {notes.map((n, idx) => {
+                  const isEditing = editingNote?.id === n.id;
+                  return (
+                    <div key={n.id} className={`border rounded-lg p-3 text-xs ${idx === notes.length - 1 ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-gray-400 font-medium shrink-0">{n.date}</span>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => setEditingNote({ id: n.id, text: n.note })}
+                            className="text-gray-400 hover:text-indigo-500"
+                            title="Edit note"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            onClick={() => deleteNoteMut.mutate({ clusterId, opId: op.id, noteId: n.id })}
+                            disabled={deleteNoteMut.isPending}
+                            className="text-gray-400 hover:text-red-500 disabled:opacity-50"
+                            title="Delete note"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </div>
+                      {isEditing ? (
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            type="text"
+                            value={editingNote.text}
+                            onChange={e => setEditingNote({ id: n.id, text: e.target.value })}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => updateNoteMut.mutate({ clusterId, opId: op.id, noteId: n.id, note: editingNote.text })}
+                            disabled={updateNoteMut.isPending || !editingNote.text.trim()}
+                            className="px-2 py-1 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                          <button onClick={() => setEditingNote(null)} className="px-2 py-1 text-xs text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-gray-700 leading-relaxed">{n.note}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add new note form */}
+              <div className="border-t border-gray-100 pt-4">
+                <div className="text-xs font-medium text-gray-600 mb-2">Add note</div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Reason for reschedule..."
+                    value={newNoteText}
+                    onChange={e => setNewNoteText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && newNoteText.trim()) addNoteMut.mutate({ clusterId, opId: op.id, note: newNoteText }); }}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    onClick={() => addNoteMut.mutate({ clusterId, opId: op.id, note: newNoteText })}
+                    disabled={addNoteMut.isPending || !newNoteText.trim()}
+                    className="px-3 py-1 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );

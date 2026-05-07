@@ -25,12 +25,33 @@ interface Props {
   isNowColumn?: boolean;
 }
 
+const NOW_BORDER = '2px dashed #a5b4fc';
+
 export default function PhaseCell({ cell, isNowColumn }: Props) {
+  const borderLeft = isNowColumn ? NOW_BORDER : undefined;
+
   if (cell.phases.length === 0) {
     return (
       <div
         className="h-5"
-        style={{ background: isNowColumn ? 'rgba(99,102,241,0.06)' : 'transparent' }}
+        style={{
+          background: isNowColumn ? 'rgba(99,102,241,0.06)' : 'transparent',
+          borderLeft,
+        }}
+      />
+    );
+  }
+
+  if (cell.isDelayed) {
+    return (
+      <div
+        className="h-5"
+        style={{
+          background: '#ef4444',
+          boxShadow: 'inset 0 0 0 2px #fca5a5',
+          borderLeft,
+        }}
+        title="DELAYED"
       />
     );
   }
@@ -40,6 +61,9 @@ export default function PhaseCell({ cell, isNowColumn }: Props) {
       className="h-5"
       style={{
         background: buildGradient(cell.phases),
+        opacity: cell.status === 'completed' ? 0.3 : 1,
+        borderLeft,
+        ...(cell.status === 'blocked' && cell.isCurrentPhase ? { outline: '2px solid #6366f1', outlineOffset: '-2px' } : {}),
       }}
       title={cell.status === 'blocked' ? 'BLOCKED' : undefined}
     />

@@ -25,11 +25,11 @@ describe('PhaseCell solid rendering', () => {
     const cell = container.firstChild as HTMLDivElement;
     expect(cell.style.background).toBe('rgb(245, 158, 11)');
     expect(cell.style.border).toBe('');
-    expect(cell.style.outline).toBe('2px solid #6366f1');
+    expect(cell.style.outline).toBe('2px solid #f87171');
     expect(cell.title).toBe('BLOCKED');
   });
 
-  it('renders blocked non-current phases with a blocked title and no outline', () => {
+  it('renders blocked non-current phases with a blocked title and red outline', () => {
     const { container } = render(
       <PhaseCell
         cell={{ phases: ['movein'], status: 'blocked', isCurrentPhase: false, isDelayed: false }}
@@ -38,7 +38,7 @@ describe('PhaseCell solid rendering', () => {
 
     const cell = container.firstChild as HTMLDivElement;
     expect(cell.style.background).toBe('rgb(245, 158, 11)');
-    expect(cell.style.outline).toBe('');
+    expect(cell.style.outline).toBe('2px solid #f87171');
     expect(cell.title).toBe('BLOCKED');
   });
 });

@@ -16,10 +16,15 @@ interface OperationRowProps {
 
 function OperationRow({ operation, label, columns, mode, nowColumn, onEdit, isChild }: OperationRowProps) {
   const cells = resolveClusterCells(operation.phases, columns, mode);
+  const hasDelayed = cells.some(c => c.isDelayed);
+
   return (
     <div
       className={`grid gap-px items-center py-0.5 border-b border-gray-100 ${isChild ? 'bg-gray-50/50' : ''}`}
-      style={{ gridTemplateColumns: `180px repeat(${columns.length}, 1fr)` }}
+      style={{
+        gridTemplateColumns: `180px repeat(${columns.length}, 1fr)`,
+        ...(hasDelayed ? { background: '#fff5f5' } : {}),
+      }}
     >
       <div
         className={`${isChild ? 'pl-10' : 'pl-6'} pr-2 group flex items-center justify-between ${onEdit ? 'cursor-pointer hover:bg-indigo-50 rounded' : ''}`}
@@ -27,7 +32,9 @@ function OperationRow({ operation, label, columns, mode, nowColumn, onEdit, isCh
         title={onEdit ? 'Click to edit phases' : undefined}
       >
         <div>
-          <div className={`text-[11px] font-medium ${isChild ? 'text-gray-500' : 'text-gray-700'}`}>{label}</div>
+          <div className={`text-[11px] font-medium ${isChild ? 'text-gray-500' : 'text-gray-700'}`}>
+            {hasDelayed ? '⚠ ' : ''}{label}
+          </div>
           {isChild && (
             <div className="text-[9px] text-gray-400">
               {operation.type === 'init' ? 'init' : 'expansion'}

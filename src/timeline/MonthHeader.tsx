@@ -1,9 +1,13 @@
+import React from 'react';
+
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 interface Props {
   columns: string[];   // e.g. ["2026-01", "2026-02", ...]
   nowColumn: string;   // e.g. "2026-05"
 }
+
+const NOW_BORDER_STYLE: React.CSSProperties = { borderLeft: '2px dashed #a5b4fc' };
 
 export default function MonthHeader({ columns, nowColumn }: Props) {
   return (
@@ -19,10 +23,17 @@ export default function MonthHeader({ columns, nowColumn }: Props) {
           <div
             key={col}
             className={`py-1.5 text-center text-[9px] border-l border-gray-100 ${
-              isNow ? 'text-indigo-700 font-bold bg-indigo-50' : 'text-gray-700 font-semibold'
+              isNow ? 'bg-indigo-50' : 'text-gray-700 font-semibold'
             }`}
+            style={isNow ? NOW_BORDER_STYLE : undefined}
           >
-            {MONTH_NAMES[monthIndex]}
+            {isNow ? (
+              <span className="inline-block bg-indigo-500 text-white rounded-full px-1.5 py-px text-[8px] font-bold leading-tight">
+                TODAY
+              </span>
+            ) : (
+              MONTH_NAMES[monthIndex]
+            )}
           </div>
         );
       })}

@@ -1,6 +1,7 @@
-import { db_getTimelineClusters } from '../mock/store';
+import client from './client';
 import type { Cluster } from '../types';
 
 export async function fetchTimelineClusters(): Promise<Cluster[]> {
-  return db_getTimelineClusters();
+  const { data } = await client.get<Cluster[]>('/timeline');
+  return data;
 }

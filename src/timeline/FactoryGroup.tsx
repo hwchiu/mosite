@@ -28,15 +28,6 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
     return acc;
   }, {} as Record<string, number>);
 
-  const PHASE_EMOJI: Record<string, string> = {
-    purchase: '🛒',
-    movein:   '📦',
-    infra:    '⚙️',
-    cluster:  '🔧',
-    platform: '🟣',
-    release:  '🟢',
-  };
-
   return (
     <div className="border-b border-gray-200">
       {/* Factory header */}
@@ -57,7 +48,7 @@ export default function FactoryGroup({ factory, clusters, columns, mode, nowColu
         <div className="flex gap-2 px-2 flex-wrap">
           {Object.entries(phaseSummary).map(([phase, count]) => (
             <span key={phase} className="text-[9px] text-gray-500">
-              {PHASE_EMOJI[phase] ?? '•'} {phase}×{count}
+              {phase}×{count}
             </span>
           ))}
         </div>

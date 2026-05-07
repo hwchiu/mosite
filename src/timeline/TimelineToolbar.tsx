@@ -10,6 +10,9 @@ interface Props {
   onOperationTypeFilterChange: (t: 'all' | 'init' | 'expansion') => void;
   nameFilter: string;
   onNameFilterChange: (n: string) => void;
+  factories: { id: string; name: string }[];
+  factoryFilter: string;
+  onFactoryFilterChange: (id: string) => void;
 }
 
 export default function TimelineToolbar({
@@ -17,10 +20,23 @@ export default function TimelineToolbar({
   typeFilter, onTypeFilterChange,
   operationTypeFilter, onOperationTypeFilterChange,
   nameFilter, onNameFilterChange,
+  factories, factoryFilter, onFactoryFilterChange,
 }: Props) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-200 flex-shrink-0 flex-wrap">
       <span className="text-indigo-600 font-bold text-[13px]">📅 Timeline</span>
+
+      {/* Factory filter */}
+      <select
+        value={factoryFilter}
+        onChange={e => onFactoryFilterChange(e.target.value)}
+        className="px-2 py-1 text-[11px] border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 bg-white"
+      >
+        <option value="">All Factories</option>
+        {factories.map(f => (
+          <option key={f.id} value={f.id}>{f.name}</option>
+        ))}
+      </select>
 
       {/* Type filter */}
       <div className="flex bg-gray-100 rounded overflow-hidden">

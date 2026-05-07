@@ -19,7 +19,7 @@ export default function MonthHeader({ columns, nowColumn }: Props) {
           <div
             key={col}
             className={`py-1.5 text-center text-[9px] border-l border-gray-100 ${
-              isNow ? 'text-indigo-700 font-semibold bg-indigo-50' : 'text-gray-400'
+              isNow ? 'text-indigo-700 font-bold bg-indigo-50' : 'text-gray-700 font-semibold'
             }`}
           >
             {MONTH_NAMES[monthIndex]}

@@ -1,6 +1,7 @@
 import type { DashboardSummary } from '../types';
-import { db_getDashboardSummary } from '../mock/store';
+import client from './client';
 
 export async function getSummary(): Promise<DashboardSummary> {
-  return db_getDashboardSummary();
+  const { data } = await client.get<DashboardSummary>('/dashboard');
+  return data;
 }

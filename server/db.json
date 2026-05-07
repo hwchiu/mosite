@@ -1,0 +1,1505 @@
+{
+  "factories": [
+    {
+      "id": "f1",
+      "name": "F1",
+      "created_at": "2025-01-10T08:00:00Z"
+    },
+    {
+      "id": "f2",
+      "name": "F2",
+      "created_at": "2025-02-01T08:00:00Z"
+    },
+    {
+      "id": "f3",
+      "name": "F3",
+      "created_at": "2025-03-15T08:00:00Z"
+    },
+    {
+      "id": "f4",
+      "name": "F4",
+      "created_at": "2025-04-01T08:00:00Z"
+    },
+    {
+      "id": "f5",
+      "name": "F5",
+      "created_at": "2025-05-01T08:00:00Z"
+    },
+    {
+      "id": "f6",
+      "name": "F6",
+      "created_at": "2025-06-01T08:00:00Z"
+    },
+    {
+      "id": "f7",
+      "name": "F7",
+      "created_at": "2025-07-01T08:00:00Z"
+    },
+    {
+      "id": "f8",
+      "name": "F8",
+      "created_at": "2025-08-01T08:00:00Z"
+    },
+    {
+      "id": "f9",
+      "name": "F9",
+      "created_at": "2025-09-01T08:00:00Z"
+    },
+    {
+      "id": "f10",
+      "name": "F10",
+      "created_at": "2025-10-01T08:00:00Z"
+    }
+  ],
+  "clusters": [
+    {
+      "id": "c1",
+      "name": "F1-K8S-Prod",
+      "type": "k8s",
+      "factory_id": "f1",
+      "factory_name": "F1",
+      "status": "infra",
+      "operations": [
+        {
+          "id": "c1-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-01-22",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-02-05",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-03-05",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-03-19",
+              "status": "completed"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-04-02",
+              "status": "completed"
+            },
+            {
+              "phase": "release",
+              "date": "2026-04-16",
+              "status": "completed"
+            }
+          ],
+          "created_at": "2025-01-20T08:00:00Z"
+        },
+        {
+          "id": "c1-op-exp1",
+          "type": "expansion",
+          "label": "Expansion #1",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-05-14",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-28",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-18",
+              "status": "in_progress"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-23",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2026-04-20T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-01-20T08:00:00Z"
+    },
+    {
+      "id": "c2",
+      "name": "F1-VM-Infra",
+      "type": "vm",
+      "factory_id": "f1",
+      "factory_name": "F1",
+      "status": "infra",
+      "operations": [
+        {
+          "id": "c2-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-07",
+              "status": "in_progress"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-28",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-06-11",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-06-25",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-01-25T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-01-25T08:00:00Z"
+    },
+    {
+      "id": "c3",
+      "name": "F1-K8S-Staging",
+      "type": "k8s",
+      "factory_id": "f1",
+      "factory_name": "F1",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c3-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-11",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-25",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-23",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-08-06",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-08-20",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-01-30T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-01-30T08:00:00Z"
+    },
+    {
+      "id": "c4",
+      "name": "F2-K8S-Prod",
+      "type": "k8s",
+      "factory_id": "f2",
+      "factory_name": "F2",
+      "status": "infra",
+      "operations": [
+        {
+          "id": "c4-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-02",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-04",
+              "status": "blocked",
+              "note": "機器延遲到貨，預計 W23 恢復"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-16",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-02-10T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-02-10T08:00:00Z"
+    },
+    {
+      "id": "c5",
+      "name": "F2-VM-Dev",
+      "type": "vm",
+      "factory_id": "f2",
+      "factory_name": "F2",
+      "status": "cluster",
+      "operations": [
+        {
+          "id": "c5-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-03-05",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-03-19",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-04-09",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-14",
+              "status": "in_progress"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-05-28",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-06-11",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-02-15T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-02-15T08:00:00Z"
+    },
+    {
+      "id": "c6",
+      "name": "F3-K8S-Prod-A",
+      "type": "k8s",
+      "factory_id": "f3",
+      "factory_name": "F3",
+      "status": "movein",
+      "operations": [
+        {
+          "id": "c6-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-03-05",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-03-19",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-04-09",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-04-30",
+              "status": "completed"
+            },
+            {
+              "phase": "release",
+              "date": "2026-05-14",
+              "status": "completed"
+            }
+          ],
+          "created_at": "2025-03-20T08:00:00Z"
+        },
+        {
+          "id": "c6-op-exp1",
+          "type": "expansion",
+          "label": "Expansion #1",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-11",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-25",
+              "status": "in_progress"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-23",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-08-06",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2026-05-05T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-03-20T08:00:00Z"
+    },
+    {
+      "id": "c7",
+      "name": "F3-K8S-Prod-B",
+      "type": "k8s",
+      "factory_id": "f3",
+      "factory_name": "F3",
+      "status": "movein",
+      "operations": [
+        {
+          "id": "c7-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-30",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-21",
+              "status": "in_progress"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-16",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-03-22T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-03-22T08:00:00Z"
+    },
+    {
+      "id": "c8",
+      "name": "F3-VM-Dev",
+      "type": "vm",
+      "factory_id": "f3",
+      "factory_name": "F3",
+      "status": "cluster",
+      "operations": [
+        {
+          "id": "c8-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-04-30",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-07",
+              "status": "in_progress"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-05-21",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-06-04",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-03-25T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-03-25T08:00:00Z"
+    },
+    {
+      "id": "c9",
+      "name": "F3-VM-Staging",
+      "type": "vm",
+      "factory_id": "f3",
+      "factory_name": "F3",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c9-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-05-28",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-11",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-25",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-23",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-08-06",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-03-28T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-03-28T08:00:00Z"
+    },
+    {
+      "id": "c10",
+      "name": "F4-K8S-Main",
+      "type": "k8s",
+      "factory_id": "f4",
+      "factory_name": "F4",
+      "status": "infra",
+      "operations": [
+        {
+          "id": "c10-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-30",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-14",
+              "status": "in_progress"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-28",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-06-11",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-06-25",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-04-10T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-04-10T08:00:00Z"
+    },
+    {
+      "id": "c11",
+      "name": "F5-K8S-Prod",
+      "type": "k8s",
+      "factory_id": "f5",
+      "factory_name": "F5",
+      "status": "cluster",
+      "operations": [
+        {
+          "id": "c11-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-02-19",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-03-05",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-03-26",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-04-09",
+              "status": "completed"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "release",
+              "date": "2026-04-30",
+              "status": "completed"
+            }
+          ],
+          "created_at": "2025-05-10T08:00:00Z"
+        },
+        {
+          "id": "c11-op-exp1",
+          "type": "expansion",
+          "label": "Expansion #1",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-05-28",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-11",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-25",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-23",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2026-04-15T08:00:00Z"
+        },
+        {
+          "id": "c11-op-exp2",
+          "type": "expansion",
+          "label": "Expansion #2",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-08-06",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-08-20",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-09-03",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-09-17",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-10-01",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2026-05-01T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-05-10T08:00:00Z"
+    },
+    {
+      "id": "c12",
+      "name": "F5-VM-Infra",
+      "type": "vm",
+      "factory_id": "f5",
+      "factory_name": "F5",
+      "status": "movein",
+      "operations": [
+        {
+          "id": "c12-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-07",
+              "status": "in_progress"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-21",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-02",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-05-15T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-05-15T08:00:00Z"
+    },
+    {
+      "id": "c13",
+      "name": "F5-K8S-Dev",
+      "type": "k8s",
+      "factory_id": "f5",
+      "factory_name": "F5",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c13-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-16",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-30",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-08-13",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-08-27",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-05-20T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-05-20T08:00:00Z"
+    },
+    {
+      "id": "c14",
+      "name": "F6-K8S-Prod",
+      "type": "k8s",
+      "factory_id": "f6",
+      "factory_name": "F6",
+      "status": "cluster",
+      "operations": [
+        {
+          "id": "c14-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-02",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-07",
+              "status": "in_progress"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-05-21",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-06-04",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-06-10T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-06-10T08:00:00Z"
+    },
+    {
+      "id": "c15",
+      "name": "F6-VM-Dev",
+      "type": "vm",
+      "factory_id": "f6",
+      "factory_name": "F6",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c15-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-05-14",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-28",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-11",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-25",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-23",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-06-15T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-06-15T08:00:00Z"
+    },
+    {
+      "id": "c16",
+      "name": "F7-K8S-Prod-A",
+      "type": "k8s",
+      "factory_id": "f7",
+      "factory_name": "F7",
+      "status": "movein",
+      "operations": [
+        {
+          "id": "c16-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-03-19",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-03-26",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-04-09",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "release",
+              "date": "2026-05-07",
+              "status": "completed"
+            }
+          ],
+          "created_at": "2025-07-10T08:00:00Z"
+        },
+        {
+          "id": "c16-op-exp1",
+          "type": "expansion",
+          "label": "Expansion #1",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-04",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-18",
+              "status": "in_progress"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-16",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-30",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2026-04-25T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-07-10T08:00:00Z"
+    },
+    {
+      "id": "c17",
+      "name": "F7-K8S-Prod-B",
+      "type": "k8s",
+      "factory_id": "f7",
+      "factory_name": "F7",
+      "status": "infra",
+      "operations": [
+        {
+          "id": "c17-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-16",
+              "status": "completed",
+              "order": 0
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-23",
+              "status": "completed",
+              "order": 1
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-18",
+              "status": "estimated",
+              "order": 2
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-28",
+              "status": "estimated",
+              "order": 3
+            },
+            {
+              "phase": "platform",
+              "date": "2026-06-11",
+              "status": "estimated",
+              "order": 4
+            },
+            {
+              "phase": "release",
+              "date": "2026-06-25",
+              "status": "estimated",
+              "order": 5
+            }
+          ],
+          "created_at": "2025-07-12T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-07-12T08:00:00Z"
+    },
+    {
+      "id": "c18",
+      "name": "F7-VM-Infra",
+      "type": "vm",
+      "factory_id": "f7",
+      "factory_name": "F7",
+      "status": "cluster",
+      "operations": [
+        {
+          "id": "c18-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-09",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-07",
+              "status": "in_progress"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-05-14",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-05-28",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-07-15T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-07-15T08:00:00Z"
+    },
+    {
+      "id": "c19",
+      "name": "F7-K8S-Staging",
+      "type": "k8s",
+      "factory_id": "f7",
+      "factory_name": "F7",
+      "status": "movein",
+      "operations": [
+        {
+          "id": "c19-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-23",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-14",
+              "status": "blocked",
+              "note": "設施準備延遲"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-16",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-07-18T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-07-18T08:00:00Z"
+    },
+    {
+      "id": "c20",
+      "name": "F7-VM-Dev",
+      "type": "vm",
+      "factory_id": "f7",
+      "factory_name": "F7",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c20-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-25",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-23",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-08-06",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-08-20",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-09-03",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-07-20T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-07-20T08:00:00Z"
+    },
+    {
+      "id": "c21",
+      "name": "F8-K8S-Prod",
+      "type": "k8s",
+      "factory_id": "f8",
+      "factory_name": "F8",
+      "status": "infra",
+      "operations": [
+        {
+          "id": "c21-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-30",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-07",
+              "status": "completed"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-21",
+              "status": "in_progress"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-02",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-08-10T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-08-10T08:00:00Z"
+    },
+    {
+      "id": "c22",
+      "name": "F8-VM-Infra",
+      "type": "vm",
+      "factory_id": "f8",
+      "factory_name": "F8",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c22-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-16",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-30",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-08-13",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-08-15T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-08-15T08:00:00Z"
+    },
+    {
+      "id": "c23",
+      "name": "F9-K8S-Prod",
+      "type": "k8s",
+      "factory_id": "f9",
+      "factory_name": "F9",
+      "status": "movein",
+      "operations": [
+        {
+          "id": "c23-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-04-16",
+              "status": "completed"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-07",
+              "status": "in_progress"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-21",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-02",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-09-10T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-09-10T08:00:00Z"
+    },
+    {
+      "id": "c24",
+      "name": "F9-VM-Dev",
+      "type": "vm",
+      "factory_id": "f9",
+      "factory_name": "F9",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c24-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-05-21",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-04",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-06-18",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-07-16",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-07-30",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-09-15T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-09-15T08:00:00Z"
+    },
+    {
+      "id": "c25",
+      "name": "F9-K8S-Staging",
+      "type": "k8s",
+      "factory_id": "f9",
+      "factory_name": "F9",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c25-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-07-02",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-07-16",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-30",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-08-13",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-08-27",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-09-10",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-09-20T08:00:00Z"
+        }
+      ],
+      "created_at": "2025-09-20T08:00:00Z"
+    },
+    {
+      "id": "c26",
+      "name": "F10-K8S-Main",
+      "type": "k8s",
+      "factory_id": "f10",
+      "factory_name": "F10",
+      "status": "purchase",
+      "operations": [
+        {
+          "id": "c26-op-init",
+          "type": "init",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-06-11",
+              "status": "estimated"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-06-25",
+              "status": "estimated"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-07-09",
+              "status": "estimated"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-07-23",
+              "status": "estimated"
+            },
+            {
+              "phase": "platform",
+              "date": "2026-08-06",
+              "status": "estimated"
+            },
+            {
+              "phase": "release",
+              "date": "2026-08-20",
+              "status": "estimated"
+            }
+          ],
+          "created_at": "2025-10-10T08:00:00Z"
+        },
+        {
+          "id": "5828c7ac-b605-4365-bf8d-2f0d5f27f50e",
+          "type": "expansion",
+          "label": "Expansion #1",
+          "phases": [
+            {
+              "phase": "purchase",
+              "date": "2026-05-07"
+            },
+            {
+              "phase": "movein",
+              "date": "2026-05-14"
+            },
+            {
+              "phase": "infra",
+              "date": "2026-05-21"
+            },
+            {
+              "phase": "cluster",
+              "date": "2026-05-28"
+            },
+            {
+              "phase": "release",
+              "date": "2026-05-28"
+            }
+          ],
+          "created_at": "2026-05-07T02:52:03.083Z"
+        }
+      ],
+      "created_at": "2025-10-10T08:00:00Z"
+    }
+  ]
+}

@@ -1,8 +1,5 @@
 import type { Cluster, ClusterPhase, ClusterType, OperationType } from '../types';
-import {
-  db_listClusters, db_createCluster, db_getCluster, db_updateCluster, db_deleteCluster,
-  db_addOperation, db_updateOperation, db_deleteOperation,
-} from '../mock/store';
+import client from './client';
 
 export interface ClusterListParams {
   factory_id?: string;
@@ -18,26 +15,30 @@ export interface CreateClusterData {
 }
 
 export async function listClusters(params?: ClusterListParams): Promise<Cluster[]> {
-  return db_listClusters(params?.factory_id, params?.type);
+  const { data } = await client.get<Cluster[]>('/clusters', { params });
+  return data;
 }
 
 export async function createCluster(data: CreateClusterData): Promise<Cluster> {
-  return db_createCluster(data);
+  const { data: result } = await client.post<Cluster>('/clusters', data);
+  return result;
 }
 
 export async function getCluster(id: string): Promise<Cluster> {
-  return db_getCluster(id);
+  const { data } = await client.get<Cluster>(`/clusters/${id}`);
+  return data;
 }
 
 export async function updateCluster(
-  id: string, 
+  id: string,
   data: Partial<Pick<Cluster, 'name' | 'description' | 'factory_id' | 'type' | 'phases'>>
 ): Promise<Cluster> {
-  return db_updateCluster(id, data);
+  const { data: result } = await client.put<Cluster>(`/clusters/${id}`, data);
+  return result;
 }
 
 export async function deleteCluster(id: string): Promise<void> {
-  return db_deleteCluster(id);
+  await client.delete(`/clusters/${id}`);
 }
 
 export interface CreateOperationData {
@@ -47,7 +48,8 @@ export interface CreateOperationData {
 }
 
 export async function addOperation(clusterId: string, data: CreateOperationData): Promise<Cluster> {
-  return db_addOperation(clusterId, data);
+  const { data: result } = await client.post<Cluster>(`/clusters/${clusterId}/operations`, data);
+  return result;
 }
 
 export async function updateOperation(
@@ -55,9 +57,13 @@ export async function updateOperation(
   operationId: string,
   phases: ClusterPhase[],
 ): Promise<Cluster> {
-  return db_updateOperation(clusterId, operationId, phases);
+  const { data: result } = await client.put<Cluster>(
+    `/clusters/${clusterId}/operations/${operationId}`,
+    { phases },
+  );
+  return result;
 }
 
 export async function deleteOperation(clusterId: string, operationId: string): Promise<void> {
-  return db_deleteOperation(clusterId, operationId);
+  await client.delete(`/clusters/${clusterId}/operations/${operationId}`);
 }

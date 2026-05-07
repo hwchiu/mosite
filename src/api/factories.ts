@@ -1,14 +1,16 @@
 import type { Factory } from '../types';
-import { db_listFactories, db_createFactory, db_deleteFactory } from '../mock/store';
+import client from './client';
 
 export async function listFactories(): Promise<Factory[]> {
-  return db_listFactories();
+  const { data } = await client.get<Factory[]>('/factories');
+  return data;
 }
 
 export async function createFactory(data: { name: string }): Promise<Factory> {
-  return db_createFactory(data.name);
+  const { data: result } = await client.post<Factory>('/factories', data);
+  return result;
 }
 
 export async function deleteFactory(id: string): Promise<void> {
-  return db_deleteFactory(id);
+  await client.delete(`/factories/${id}`);
 }

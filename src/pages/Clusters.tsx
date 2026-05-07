@@ -235,7 +235,7 @@ export default function Clusters() {
     return (clustersQ.data ?? [])
       .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
       .filter((c) => {
-        if (filters.factory && !(c.factory_name ?? '').toLowerCase().includes(filters.factory.toLowerCase())) return false;
+        if (filters.factory && c.factory_name !== filters.factory) return false;
         if (filters.name && !c.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
         if (filters.type && c.type !== filters.type) return false;
         if (filters.status && c.status !== filters.status) return false;
@@ -409,13 +409,16 @@ export default function Clusters() {
                 <tr className="border-b border-gray-200">
                   <td />
                   <td className="px-3 py-2">
-                    <input
-                      type="text"
+                    <select
                       value={filters.factory}
                       onChange={(e) => setFilters({ ...filters, factory: e.target.value })}
-                      placeholder="Filter…"
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
-                    />
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none bg-white"
+                    >
+                      <option value="">All</option>
+                      {(factoriesQ.data ?? []).map(f => (
+                        <option key={f.id} value={f.name}>{f.name}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-3 py-2">
                     <input

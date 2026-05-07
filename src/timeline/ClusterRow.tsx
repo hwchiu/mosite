@@ -56,9 +56,8 @@ interface Props {
 export default function ClusterRow({ cluster, columns, mode, nowColumn, onEdit }: Props) {
   const [expanded, setExpanded] = useState(false);
   const operations = cluster.operations ?? [];
-  const latestOp = operations[operations.length - 1];
 
-  if (!latestOp) {
+  if (operations.length === 0) {
     // Fallback: legacy cluster with no operations
     const cells = resolveClusterCells(cluster.phases ?? [], columns, mode);
     return (
@@ -76,16 +75,18 @@ export default function ClusterRow({ cluster, columns, mode, nowColumn, onEdit }
     );
   }
 
+  const initOp = operations.find(op => op.type === 'init') ?? operations[0];
+
   if (operations.length === 1) {
     // Single operation: show as flat row (no expand toggle)
     return (
       <OperationRow
-        operation={latestOp}
+        operation={initOp}
         label={cluster.name}
         columns={columns}
         mode={mode}
         nowColumn={nowColumn}
-        onEdit={onEdit ? () => onEdit(cluster, latestOp.id) : undefined}
+        onEdit={onEdit ? () => onEdit(cluster, initOp.id) : undefined}
       />
     );
   }
@@ -93,7 +94,7 @@ export default function ClusterRow({ cluster, columns, mode, nowColumn, onEdit }
   // Multiple operations: collapsible parent
   return (
     <>
-      {/* Parent summary row */}
+      {/* Parent summary row — always shows init operation phases */}
       <div
         className="grid gap-px items-center py-0.5 border-b border-gray-100 cursor-pointer hover:bg-indigo-50/30"
         style={{ gridTemplateColumns: `180px repeat(${columns.length}, 1fr)` }}
@@ -108,8 +109,7 @@ export default function ClusterRow({ cluster, columns, mode, nowColumn, onEdit }
             <div className="text-[9px] text-gray-400">{operations.length} ops</div>
           </div>
         </div>
-        {/* Show latest operation's phase cells in collapsed state */}
-        {resolveClusterCells(latestOp.phases, columns, mode).map((cell, i) => (
+        {resolveClusterCells(initOp.phases, columns, mode).map((cell, i) => (
           <PhaseCell key={columns[i]} cell={cell} isNowColumn={columns[i] === nowColumn} />
         ))}
       </div>

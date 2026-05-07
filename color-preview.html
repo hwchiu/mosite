@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Phase Color Palette Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; padding: 32px; color: #1e293b; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 24px; color: #0f172a; }
+  .options { display: flex; flex-direction: column; gap: 32px; }
+  .option { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .option-header { padding: 14px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: baseline; gap: 10px; }
+  .option-header h2 { font-size: 14px; font-weight: 700; }
+  .option-header p { font-size: 12px; color: #64748b; }
+  .swatches { display: flex; gap: 0; }
+  .swatch { flex: 1; height: 48px; display: flex; align-items: flex-end; padding-bottom: 6px; justify-content: center; }
+  .swatch span { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.9); text-shadow: 0 1px 2px rgba(0,0,0,0.4); letter-spacing: 0.02em; }
+  .legend { display: flex; gap: 16px; padding: 12px 20px; flex-wrap: wrap; border-top: 1px solid #f1f5f9; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+  /* Simulated timeline rows */
+  .timeline-preview { padding: 0 20px 16px; }
+  .tl-header { display: grid; gap: 1px; margin-bottom: 4px; }
+  .tl-row { display: grid; gap: 1px; margin-bottom: 3px; align-items: center; }
+  .tl-label { font-size: 10px; font-weight: 600; color: #64748b; padding: 2px 0; }
+  .tl-cell { height: 16px; border-radius: 3px; }
+  .tl-col-label { font-size: 9px; font-weight: 600; color: #334155; text-align: center; }
+  .tl-empty { background: transparent; }
+  .section-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 20px 4px; }
+</style>
+</head>
+<body>
+<h1>Phase Color Palette Options</h1>
+
+<div class="options">
+
+  <!-- CURRENT -->
+  <div class="option">
+    <div class="option-header">
+      <h2>Current (for reference)</h2>
+      <p>infra / cluster / platform are hard to distinguish</p>
+    </div>
+    <div class="swatches">
+      <div class="swatch" style="background:#94a3b8"><span>Purchase</span></div>
+      <div class="swatch" style="background:#f59e0b"><span>Move-In</span></div>
+      <div class="swatch" style="background:#6366f1"><span>Infra</span></div>
+      <div class="swatch" style="background:#3b82f6"><span>Cluster</span></div>
+      <div class="swatch" style="background:#8b5cf6"><span>Platform</span></div>
+      <div class="swatch" style="background:#10b981"><span>Release</span></div>
+    </div>
+    <div class="section-label">Timeline simulation</div>
+    <div class="timeline-preview">
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label"></div>
+        <div class="tl-col-label">W18</div><div class="tl-col-label">W19</div><div class="tl-col-label">W20</div>
+        <div class="tl-col-label">W21</div><div class="tl-col-label">W22</div><div class="tl-col-label">W23</div>
+        <div class="tl-col-label">W24</div><div class="tl-col-label">W25</div><div class="tl-col-label">W26</div>
+        <div class="tl-col-label">W27</div><div class="tl-col-label">W28</div><div class="tl-col-label">W29</div>
+        <div class="tl-col-label">W30</div><div class="tl-col-label">W31</div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F1-Cluster-A</div>
+        <div class="tl-cell" style="background:#94a3b8"></div><div class="tl-cell" style="background:#94a3b8"></div>
+        <div class="tl-cell" style="background:#f59e0b"></div><div class="tl-cell" style="background:#f59e0b"></div>
+        <div class="tl-cell" style="background:#6366f1"></div><div class="tl-cell" style="background:#6366f1"></div><div class="tl-cell" style="background:#6366f1"></div>
+        <div class="tl-cell" style="background:#3b82f6"></div><div class="tl-cell" style="background:#3b82f6"></div>
+        <div class="tl-cell" style="background:#8b5cf6"></div><div class="tl-cell" style="background:#8b5cf6"></div>
+        <div class="tl-cell" style="background:#10b981"></div><div class="tl-cell" style="background:#10b981"></div>
+        <div class="tl-empty"></div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F2-Cluster-B</div>
+        <div class="tl-empty"></div>
+        <div class="tl-cell" style="background:#94a3b8"></div><div class="tl-cell" style="background:#94a3b8"></div><div class="tl-cell" style="background:#94a3b8"></div>
+        <div class="tl-cell" style="background:#f59e0b"></div><div class="tl-cell" style="background:#f59e0b"></div>
+        <div class="tl-cell" style="background:#6366f1"></div><div class="tl-cell" style="background:#6366f1"></div>
+        <div class="tl-cell" style="background:#3b82f6"></div>
+        <div class="tl-cell" style="background:#8b5cf6"></div><div class="tl-cell" style="background:#8b5cf6"></div>
+        <div class="tl-cell" style="background:#10b981"></div><div class="tl-cell" style="background:#10b981"></div>
+        <div class="tl-empty"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Purchase</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Move-In</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Infra</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Cluster</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Platform</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Release</div>
+    </div>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="option">
+    <div class="option-header">
+      <h2>Option A — Warm Progress</h2>
+      <p>Cool → warm → green; traffic-light feel</p>
+    </div>
+    <div class="swatches">
+      <div class="swatch" style="background:#64748b"><span>Purchase</span></div>
+      <div class="swatch" style="background:#0ea5e9"><span>Move-In</span></div>
+      <div class="swatch" style="background:#f97316"><span>Infra</span></div>
+      <div class="swatch" style="background:#eab308"><span>Cluster</span></div>
+      <div class="swatch" style="background:#a855f7"><span>Platform</span></div>
+      <div class="swatch" style="background:#22c55e"><span>Release</span></div>
+    </div>
+    <div class="section-label">Timeline simulation</div>
+    <div class="timeline-preview">
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label"></div>
+        <div class="tl-col-label">W18</div><div class="tl-col-label">W19</div><div class="tl-col-label">W20</div>
+        <div class="tl-col-label">W21</div><div class="tl-col-label">W22</div><div class="tl-col-label">W23</div>
+        <div class="tl-col-label">W24</div><div class="tl-col-label">W25</div><div class="tl-col-label">W26</div>
+        <div class="tl-col-label">W27</div><div class="tl-col-label">W28</div><div class="tl-col-label">W29</div>
+        <div class="tl-col-label">W30</div><div class="tl-col-label">W31</div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F1-Cluster-A</div>
+        <div class="tl-cell" style="background:#64748b"></div><div class="tl-cell" style="background:#64748b"></div>
+        <div class="tl-cell" style="background:#0ea5e9"></div><div class="tl-cell" style="background:#0ea5e9"></div>
+        <div class="tl-cell" style="background:#f97316"></div><div class="tl-cell" style="background:#f97316"></div><div class="tl-cell" style="background:#f97316"></div>
+        <div class="tl-cell" style="background:#eab308"></div><div class="tl-cell" style="background:#eab308"></div>
+        <div class="tl-cell" style="background:#a855f7"></div><div class="tl-cell" style="background:#a855f7"></div>
+        <div class="tl-cell" style="background:#22c55e"></div><div class="tl-cell" style="background:#22c55e"></div>
+        <div class="tl-empty"></div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F2-Cluster-B</div>
+        <div class="tl-empty"></div>
+        <div class="tl-cell" style="background:#64748b"></div><div class="tl-cell" style="background:#64748b"></div><div class="tl-cell" style="background:#64748b"></div>
+        <div class="tl-cell" style="background:#0ea5e9"></div><div class="tl-cell" style="background:#0ea5e9"></div>
+        <div class="tl-cell" style="background:#f97316"></div><div class="tl-cell" style="background:#f97316"></div>
+        <div class="tl-cell" style="background:#eab308"></div>
+        <div class="tl-cell" style="background:#a855f7"></div><div class="tl-cell" style="background:#a855f7"></div>
+        <div class="tl-cell" style="background:#22c55e"></div><div class="tl-cell" style="background:#22c55e"></div>
+        <div class="tl-empty"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div>Purchase</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div>Move-In</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Infra</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Cluster</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Platform</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Release</div>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option">
+    <div class="option-header">
+      <h2>Option B — Sequential Blue → Green</h2>
+      <p>Cool, professional; progress reads naturally left-to-right</p>
+    </div>
+    <div class="swatches">
+      <div class="swatch" style="background:#94a3b8"><span>Purchase</span></div>
+      <div class="swatch" style="background:#06b6d4"><span>Move-In</span></div>
+      <div class="swatch" style="background:#3b82f6"><span>Infra</span></div>
+      <div class="swatch" style="background:#4f46e5"><span>Cluster</span></div>
+      <div class="swatch" style="background:#14b8a6"><span>Platform</span></div>
+      <div class="swatch" style="background:#10b981"><span>Release</span></div>
+    </div>
+    <div class="section-label">Timeline simulation</div>
+    <div class="timeline-preview">
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label"></div>
+        <div class="tl-col-label">W18</div><div class="tl-col-label">W19</div><div class="tl-col-label">W20</div>
+        <div class="tl-col-label">W21</div><div class="tl-col-label">W22</div><div class="tl-col-label">W23</div>
+        <div class="tl-col-label">W24</div><div class="tl-col-label">W25</div><div class="tl-col-label">W26</div>
+        <div class="tl-col-label">W27</div><div class="tl-col-label">W28</div><div class="tl-col-label">W29</div>
+        <div class="tl-col-label">W30</div><div class="tl-col-label">W31</div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F1-Cluster-A</div>
+        <div class="tl-cell" style="background:#94a3b8"></div><div class="tl-cell" style="background:#94a3b8"></div>
+        <div class="tl-cell" style="background:#06b6d4"></div><div class="tl-cell" style="background:#06b6d4"></div>
+        <div class="tl-cell" style="background:#3b82f6"></div><div class="tl-cell" style="background:#3b82f6"></div><div class="tl-cell" style="background:#3b82f6"></div>
+        <div class="tl-cell" style="background:#4f46e5"></div><div class="tl-cell" style="background:#4f46e5"></div>
+        <div class="tl-cell" style="background:#14b8a6"></div><div class="tl-cell" style="background:#14b8a6"></div>
+        <div class="tl-cell" style="background:#10b981"></div><div class="tl-cell" style="background:#10b981"></div>
+        <div class="tl-empty"></div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F2-Cluster-B</div>
+        <div class="tl-empty"></div>
+        <div class="tl-cell" style="background:#94a3b8"></div><div class="tl-cell" style="background:#94a3b8"></div><div class="tl-cell" style="background:#94a3b8"></div>
+        <div class="tl-cell" style="background:#06b6d4"></div><div class="tl-cell" style="background:#06b6d4"></div>
+        <div class="tl-cell" style="background:#3b82f6"></div><div class="tl-cell" style="background:#3b82f6"></div>
+        <div class="tl-cell" style="background:#4f46e5"></div>
+        <div class="tl-cell" style="background:#14b8a6"></div><div class="tl-cell" style="background:#14b8a6"></div>
+        <div class="tl-cell" style="background:#10b981"></div><div class="tl-cell" style="background:#10b981"></div>
+        <div class="tl-empty"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Purchase</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Move-In</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Infra</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div>Cluster</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div>Platform</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Release</div>
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="option">
+    <div class="option-header">
+      <h2>Option C — High-contrast Categorical</h2>
+      <p>Each phase clearly distinct; more color-blind friendly</p>
+    </div>
+    <div class="swatches">
+      <div class="swatch" style="background:#475569"><span>Purchase</span></div>
+      <div class="swatch" style="background:#f43f5e"><span>Move-In</span></div>
+      <div class="swatch" style="background:#f97316"><span>Infra</span></div>
+      <div class="swatch" style="background:#2563eb"><span>Cluster</span></div>
+      <div class="swatch" style="background:#7c3aed"><span>Platform</span></div>
+      <div class="swatch" style="background:#16a34a"><span>Release</span></div>
+    </div>
+    <div class="section-label">Timeline simulation</div>
+    <div class="timeline-preview">
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label"></div>
+        <div class="tl-col-label">W18</div><div class="tl-col-label">W19</div><div class="tl-col-label">W20</div>
+        <div class="tl-col-label">W21</div><div class="tl-col-label">W22</div><div class="tl-col-label">W23</div>
+        <div class="tl-col-label">W24</div><div class="tl-col-label">W25</div><div class="tl-col-label">W26</div>
+        <div class="tl-col-label">W27</div><div class="tl-col-label">W28</div><div class="tl-col-label">W29</div>
+        <div class="tl-col-label">W30</div><div class="tl-col-label">W31</div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F1-Cluster-A</div>
+        <div class="tl-cell" style="background:#475569"></div><div class="tl-cell" style="background:#475569"></div>
+        <div class="tl-cell" style="background:#f43f5e"></div><div class="tl-cell" style="background:#f43f5e"></div>
+        <div class="tl-cell" style="background:#f97316"></div><div class="tl-cell" style="background:#f97316"></div><div class="tl-cell" style="background:#f97316"></div>
+        <div class="tl-cell" style="background:#2563eb"></div><div class="tl-cell" style="background:#2563eb"></div>
+        <div class="tl-cell" style="background:#7c3aed"></div><div class="tl-cell" style="background:#7c3aed"></div>
+        <div class="tl-cell" style="background:#16a34a"></div><div class="tl-cell" style="background:#16a34a"></div>
+        <div class="tl-empty"></div>
+      </div>
+      <div class="tl-row" style="grid-template-columns:100px repeat(14,1fr)">
+        <div class="tl-label">F2-Cluster-B</div>
+        <div class="tl-empty"></div>
+        <div class="tl-cell" style="background:#475569"></div><div class="tl-cell" style="background:#475569"></div><div class="tl-cell" style="background:#475569"></div>
+        <div class="tl-cell" style="background:#f43f5e"></div><div class="tl-cell" style="background:#f43f5e"></div>
+        <div class="tl-cell" style="background:#f97316"></div><div class="tl-cell" style="background:#f97316"></div>
+        <div class="tl-cell" style="background:#2563eb"></div>
+        <div class="tl-cell" style="background:#7c3aed"></div><div class="tl-cell" style="background:#7c3aed"></div>
+        <div class="tl-cell" style="background:#16a34a"></div><div class="tl-cell" style="background:#16a34a"></div>
+        <div class="tl-empty"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#475569"></div>Purchase</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f43f5e"></div>Move-In</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Infra</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>Cluster</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div>Platform</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#16a34a"></div>Release</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

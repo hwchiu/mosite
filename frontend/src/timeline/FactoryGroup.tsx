@@ -9,19 +9,26 @@ interface Props {
   mode: 'week' | 'month';
   nowColumn: string;
   defaultExpanded?: boolean;
-  onEdit?: (cluster: Cluster) => void;
+  onEdit?: (cluster: Cluster, operationId?: string) => void;
+}
+
+function currentOpPhases(c: Cluster) {
+  const ops = c.operations;
+  return ops?.length ? ops[ops.length - 1].phases : c.phases ?? [];
 }
 
 export default function FactoryGroup({ factory, clusters, columns, mode, nowColumn, defaultExpanded = true, onEdit }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const hasBlocked = clusters.some(c =>
-    c.phases?.some(p => p.status === 'blocked')
+    currentOpPhases(c).some(p => p.status === 'blocked') ||
+    c.operations?.some(op => op.phases.some(p => p.status === 'blocked'))
   );
 
   // Phase summary counts
   const phaseSummary = clusters.reduce((acc, c) => {
-    const current = c.phases?.find(p => p.status === 'in_progress' || p.status === 'blocked');
+    const phases = currentOpPhases(c);
+    const current = phases.find(p => p.status === 'in_progress' || p.status === 'blocked');
     if (current) acc[current.phase] = (acc[current.phase] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

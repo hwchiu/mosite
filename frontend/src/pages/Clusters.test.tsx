@@ -27,10 +27,11 @@ function renderClusters() {
 }
 
 function getForm(): HTMLFormElement {
-  return (
-    screen.queryByRole('button', { name: 'Update' }) ??
-    screen.getByRole('button', { name: 'Create' })
-  ).closest('form') as HTMLFormElement;
+  const btn = screen.queryByRole('button', { name: 'Update' })
+    ?? screen.queryByRole('button', { name: 'Create' })
+    ?? screen.queryByRole('button', { name: 'Add Expansion' });
+  if (!btn) throw new Error('No form button found');
+  return btn.closest('form') as HTMLFormElement;
 }
 
 function getNamedElement<T extends Element>(form: HTMLFormElement, selector: string): T {
@@ -123,7 +124,7 @@ describe('Clusters milestone date editing', () => {
     await screen.findByText('F10-K8S-New');
     await waitFor(async () => {
       const created = (await clustersApi.listClusters()).find((cluster) => cluster.name === 'F10-K8S-New');
-      expect(created?.phases?.map(({ phase, date }) => ({ phase, date }))).toEqual([
+      expect(created?.operations?.[0]?.phases?.map(({ phase, date }) => ({ phase, date }))).toEqual([
         { phase: 'purchase', date: '2026-05-01' },
         { phase: 'movein', date: '2026-05-05' },
         { phase: 'infra', date: '2026-05-09' },
@@ -176,7 +177,7 @@ describe('Clusters milestone date editing', () => {
 
     const form = getForm();
     expect(getNamedElement<HTMLInputElement>(form, 'input[name="purchase"]').value).toBe(
-      existing!.phases!.find((phase) => phase.phase === 'purchase')!.date,
+      existing!.operations![0].phases.find((phase) => phase.phase === 'purchase')!.date,
     );
     expect(form.querySelector('select[name="status"]')).toBeNull();
 
@@ -185,7 +186,7 @@ describe('Clusters milestone date editing', () => {
 
     await waitFor(async () => {
       const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-      expect(updated?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
+      expect(updated?.operations?.[0]?.phases?.find((phase) => phase.phase === 'infra')?.date).toBe('2026-03-15');
     });
     await waitForEditFormToClose();
 
@@ -206,7 +207,7 @@ describe('Clusters milestone date editing', () => {
 
     const clusterName = 'F2-K8S-Prod';
     const existing = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-    const blockedPhase = existing?.phases?.find((phase) => phase.phase === 'infra');
+    const blockedPhase = existing?.operations?.[0]?.phases?.find((phase) => phase.phase === 'infra');
     expect(blockedPhase).toMatchObject({
       date: '2026-06-04',
       status: 'blocked',
@@ -222,8 +223,8 @@ describe('Clusters milestone date editing', () => {
 
     await waitFor(async () => {
       const updated = (await clustersApi.listClusters()).find((cluster) => cluster.name === clusterName);
-      expect(updated?.phases?.find((phase) => phase.phase === 'cluster')?.date).toBe('2026-06-25');
-      expect(updated?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
+      expect(updated?.operations?.[0]?.phases?.find((phase) => phase.phase === 'cluster')?.date).toBe('2026-06-25');
+      expect(updated?.operations?.[0]?.phases?.find((phase) => phase.phase === 'infra')).toMatchObject({
         date: '2026-06-04',
         status: 'blocked',
         note: '機器延遲到貨，預計 W23 恢復',
@@ -306,5 +307,79 @@ describe('Clusters milestone date editing', () => {
 
     expect(await screen.findByText('Update failed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
+  });
+});
+
+describe('Cluster operations UI', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetDB();
+  });
+
+  afterEach(async () => {
+    await waitForQueryClientsToSettle();
+    for (const queryClient of queryClients) queryClient.clear();
+    queryClients.length = 0;
+    vi.restoreAllMocks();
+  });
+
+  it('shows operations when a cluster row is expanded', async () => {
+    renderClusters();
+    await screen.findByText('F1-K8S-Prod');
+
+    // Click expand toggle on F1-K8S-Prod row
+    const row = (await screen.findByText('F1-K8S-Prod')).closest('tr') as HTMLTableRowElement;
+    fireEvent.click(within(row).getByTitle('Toggle operations'));
+
+    // Should show the init operation
+    expect(await screen.findByText('Init')).toBeInTheDocument();
+  });
+
+  it('create form always starts as init type with 6 phase inputs', async () => {
+    renderClusters();
+    await screen.findByText('F1-K8S-Prod');
+    fireEvent.click(screen.getByRole('button', { name: 'Create Cluster' }));
+
+    const form = getForm();
+    // First operation type must be init (no choice)
+    expect(form.querySelectorAll('input[type="date"]')).toHaveLength(6);
+    // Platform phase must be present for init
+    expect(form.querySelector('input[name="platform"]')).toBeInTheDocument();
+  });
+
+  it('Add Expansion button shows a 5-phase form without platform', async () => {
+    renderClusters();
+    await screen.findByText('F1-K8S-Prod');
+
+    const row = (await screen.findByText('F1-K8S-Prod')).closest('tr') as HTMLTableRowElement;
+    fireEvent.click(within(row).getByTitle('Toggle operations'));
+
+    await clickAndWaitForQueryClientsToSettle(await screen.findByRole('button', { name: '+ Add Expansion' }));
+
+    const form = getForm();
+    expect(form.querySelectorAll('input[type="date"]')).toHaveLength(5);
+    expect(form.querySelector('input[name="platform"]')).toBeNull();
+  });
+
+  it('creates an expansion operation and shows it in the operations list', async () => {
+    renderClusters();
+    await screen.findByText('F1-K8S-Prod');
+
+    const row = (await screen.findByText('F1-K8S-Prod')).closest('tr') as HTMLTableRowElement;
+    fireEvent.click(within(row).getByTitle('Toggle operations'));
+    await clickAndWaitForQueryClientsToSettle(await screen.findByRole('button', { name: '+ Add Expansion' }));
+
+    const form = getForm();
+    setPhaseDate(form, 'purchase', '2026-06-01');
+    setPhaseDate(form, 'movein',   '2026-06-08');
+    setPhaseDate(form, 'infra',    '2026-06-15');
+    setPhaseDate(form, 'cluster',  '2026-06-22');
+    setPhaseDate(form, 'release',  '2026-06-29');
+    fireEvent.click(within(form).getByRole('button', { name: 'Add Expansion' }));
+
+    await waitFor(async () => {
+      const updated = (await clustersApi.listClusters()).find(c => c.name === 'F1-K8S-Prod');
+      expect(updated?.operations?.filter(o => o.type === 'expansion')).toHaveLength(2);
+    });
   });
 });

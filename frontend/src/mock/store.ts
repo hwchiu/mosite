@@ -1,9 +1,10 @@
-import type { Factory, Cluster, ClusterPhase, DashboardSummary, ClusterStatus, PhaseStatus } from '../types';
+import type { Factory, Cluster, ClusterPhase, ClusterOperation, OperationType, DashboardSummary, ClusterStatus, PhaseStatus } from '../types';
 import { deriveClusterStatus, isoWeekToDate, validatePhaseDates } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
-const LS_KEY = 'mosite_mock_db_v5';
-const LEGACY_LS_KEY = 'mosite_mock_db_v4';
+const LS_KEY = 'mosite_mock_db_v6';
+const LEGACY_LS_KEY_V5 = 'mosite_mock_db_v5';
+const LEGACY_LS_KEY_V4 = 'mosite_mock_db_v4';
 const PHASE_ORDER: ClusterStatus[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
 const COMPATIBILITY_PHASE_GAP_DAYS = 14;
 
@@ -24,6 +25,13 @@ type LegacyCluster = Omit<Cluster, 'phases'> & {
 interface LegacyMockDB {
   factories: Factory[];
   clusters: LegacyCluster[];
+}
+
+// v5 clusters still have flat phases (no operations)
+type V5Cluster = Omit<Cluster, 'operations'> & { phases?: ClusterPhase[] };
+interface V5MockDB {
+  factories: Factory[];
+  clusters: V5Cluster[];
 }
 
 function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
@@ -157,8 +165,19 @@ function translateStatusUpdateToSchedule(
 }
 
 function hydrateCluster(cluster: Cluster): Cluster {
+  if (cluster.operations?.length) {
+    const hydratedOps: ClusterOperation[] = cluster.operations.map(op => ({
+      ...op,
+      phases: hydratePhaseStatuses(op.phases),
+    }));
+    const latestOp = hydratedOps[hydratedOps.length - 1];
+    const status = deriveClusterStatus(latestOp.phases);
+    const { phases: _phases, ...rest } = cluster; // drop legacy phases field
+    void _phases;
+    return { ...rest, operations: hydratedOps, status };
+  }
+  // Fallback for clusters still using flat phases (during migration)
   const phases = hydratePhaseStatuses(cluster.phases ?? []);
-
   return {
     ...cluster,
     phases,
@@ -209,26 +228,66 @@ function migrateLegacyPhase(phase: LegacyClusterPhase): ClusterPhase {
   };
 }
 
-function migrateLegacyCluster(cluster: LegacyCluster): Cluster {
-  return {
-    ...cluster,
-    phases: cluster.phases?.map(migrateLegacyPhase),
-  };
-}
 
-function migrateLegacyDB(): MockDB | null {
-  const legacy = parsePersistedDB<LegacyMockDB>(localStorage.getItem(LEGACY_LS_KEY));
-  if (!legacy) {
-    return null;
-  }
+
+function migrateV5DB(): MockDB | null {
+  const v5 = parsePersistedDB<V5MockDB>(localStorage.getItem(LEGACY_LS_KEY_V5));
+  if (!v5) return null;
 
   const migrated: MockDB = {
-    factories: legacy.factories,
-    clusters: legacy.clusters.map(migrateLegacyCluster),
+    factories: v5.factories,
+    clusters: v5.clusters.map((c): Cluster => {
+      if ((c as Cluster).operations?.length) {
+        // Already migrated (e.g. persisted v5 that already had operations)
+        const { phases: _p, ...rest } = c as Cluster;
+        void _p;
+        return rest;
+      }
+      const { phases, ...rest } = c;
+      return {
+        ...rest,
+        operations: [
+          {
+            id: uuid(),
+            type: 'init',
+            phases: phases ?? [],
+            created_at: c.created_at,
+          },
+        ],
+      };
+    }),
   };
 
   saveDB(migrated);
-  localStorage.removeItem(LEGACY_LS_KEY);
+  localStorage.removeItem(LEGACY_LS_KEY_V5);
+  return migrated;
+}
+
+function migrateLegacyDB(): MockDB | null {
+  const legacy = parsePersistedDB<LegacyMockDB>(localStorage.getItem(LEGACY_LS_KEY_V4));
+  if (!legacy) return null;
+
+  const migrated: MockDB = {
+    factories: legacy.factories,
+    clusters: legacy.clusters.map((c): Cluster => {
+      const phases = c.phases?.map(migrateLegacyPhase);
+      return {
+        ...c,
+        phases: undefined,
+        operations: [
+          {
+            id: uuid(),
+            type: 'init',
+            phases: phases ?? [],
+            created_at: c.created_at,
+          },
+        ],
+      };
+    }),
+  };
+
+  saveDB(migrated);
+  localStorage.removeItem(LEGACY_LS_KEY_V4);
   return migrated;
 }
 
@@ -245,14 +304,13 @@ function assertValidPhaseOrdering(phases: ClusterPhase[] | undefined): void {
 
 function loadDB(): MockDB {
   const current = parsePersistedDB<MockDB>(localStorage.getItem(LS_KEY));
-  if (current) {
-    return current;
-  }
+  if (current) return current;
 
-  const migrated = migrateLegacyDB();
-  if (migrated) {
-    return migrated;
-  }
+  const migratedV5 = migrateV5DB();
+  if (migratedV5) return migratedV5;
+
+  const migratedV4 = migrateLegacyDB();
+  if (migratedV4) return migratedV4;
 
   return {
     factories: structuredClone(SEED_FACTORIES),
@@ -323,14 +381,27 @@ export async function db_createCluster(data: Omit<Cluster, 'id' | 'created_at' |
   const db = getDB();
   const factory = db.factories.find(f => f.id === data.factory_id);
   if (!factory) throw new Error('Factory not found');
-  const phases = data.status && !data.phases ? translateStatusUpdateToSchedule(undefined, data.status) : data.phases;
-  assertValidPhaseOrdering(phases);
+
+  const created_at = now();
+
+  let operations: ClusterOperation[];
+  if (data.operations?.length) {
+    operations = data.operations;
+  } else {
+    const phases = data.status && !data.phases
+      ? translateStatusUpdateToSchedule(undefined, data.status)
+      : data.phases ?? [];
+    assertValidPhaseOrdering(phases);
+    operations = [{ id: uuid(), type: 'init', phases: phases ?? [], created_at }];
+  }
+
   const cluster: Cluster = {
     ...data,
-    phases,
+    phases: undefined,
+    operations,
     id: uuid(),
     factory_name: factory.name,
-    created_at: now(),
+    created_at,
   };
   mutate(d => d.clusters.push(cluster));
   return delay(hydrateCluster({ ...cluster }));
@@ -350,15 +421,37 @@ export async function db_updateCluster(
   mutate(d => {
     const c = d.clusters.find(x => x.id === id);
     if (!c) throw new Error('Cluster not found');
-    const nextCluster: Cluster = { ...c, ...data };
-    if (data.status && !data.phases) {
+
+    const nextCluster: Cluster = { ...c };
+
+    if (data.name !== undefined) nextCluster.name = data.name;
+    if (data.description !== undefined) nextCluster.description = data.description;
+    if (data.type !== undefined) nextCluster.type = data.type;
+    if (data.factory_id !== undefined) {
+      const factory = d.factories.find(f => f.id === data.factory_id);
+      if (factory) { nextCluster.factory_id = data.factory_id!; nextCluster.factory_name = factory.name; }
+    }
+
+    // Legacy path: direct phases update (updates init operation's phases)
+    if (data.phases !== undefined) {
+      assertValidPhaseOrdering(data.phases);
+      const ops = nextCluster.operations ?? [];
+      const initIdx = ops.findIndex(o => o.type === 'init');
+      if (initIdx >= 0) {
+        nextCluster.operations = ops.map((op, i) => i === initIdx ? { ...op, phases: data.phases! } : op);
+      }
+    } else if (data.status && nextCluster.operations?.length) {
+      const ops = nextCluster.operations;
+      const lastOp = ops[ops.length - 1];
+      const updatedPhases = translateStatusUpdateToSchedule(lastOp.phases, data.status);
+      nextCluster.operations = ops.map((op, i) =>
+        i === ops.length - 1 ? { ...op, phases: updatedPhases ?? [] } : op
+      );
+    } else if (data.status && !nextCluster.operations?.length) {
+      // Fallback for legacy flat-phases clusters
       nextCluster.phases = translateStatusUpdateToSchedule(c.phases, data.status);
     }
-    if (data.factory_id) {
-      const factory = d.factories.find(f => f.id === data.factory_id);
-      if (factory) nextCluster.factory_name = factory.name;
-    }
-    assertValidPhaseOrdering(nextCluster.phases);
+
     Object.assign(c, nextCluster);
     updated = hydrateCluster({ ...c });
   });
@@ -367,6 +460,64 @@ export async function db_updateCluster(
 
 export async function db_deleteCluster(id: string): Promise<void> {
   mutate(d => { d.clusters = d.clusters.filter(c => c.id !== id); });
+  return delay(undefined);
+}
+
+export interface AddOperationData {
+  type: OperationType;
+  label?: string;
+  phases: ClusterPhase[];
+}
+
+export async function db_addOperation(clusterId: string, data: AddOperationData): Promise<Cluster> {
+  let updated: Cluster | undefined;
+  mutate(d => {
+    const c = d.clusters.find(x => x.id === clusterId);
+    if (!c) throw new Error('Cluster not found');
+    if (data.type === 'init' && c.operations?.some(o => o.type === 'init')) {
+      throw new Error('Cluster already has an init operation');
+    }
+    assertValidPhaseOrdering(data.phases);
+    const op: ClusterOperation = {
+      id: uuid(),
+      type: data.type,
+      label: data.label,
+      phases: data.phases,
+      created_at: now(),
+    };
+    c.operations = [...(c.operations ?? []), op];
+    updated = hydrateCluster({ ...c });
+  });
+  return delay(updated!);
+}
+
+export async function db_updateOperation(
+  clusterId: string,
+  operationId: string,
+  phases: ClusterPhase[],
+): Promise<Cluster> {
+  let updated: Cluster | undefined;
+  mutate(d => {
+    const c = d.clusters.find(x => x.id === clusterId);
+    if (!c) throw new Error('Cluster not found');
+    const opIdx = c.operations?.findIndex(o => o.id === operationId) ?? -1;
+    if (opIdx < 0) throw new Error('Operation not found');
+    assertValidPhaseOrdering(phases);
+    c.operations = c.operations!.map((op, i) => i === opIdx ? { ...op, phases } : op);
+    updated = hydrateCluster({ ...c });
+  });
+  return delay(updated!);
+}
+
+export async function db_deleteOperation(clusterId: string, operationId: string): Promise<void> {
+  mutate(d => {
+    const c = d.clusters.find(x => x.id === clusterId);
+    if (!c) throw new Error('Cluster not found');
+    const op = c.operations?.find(o => o.id === operationId);
+    if (!op) throw new Error('Operation not found');
+    if (op.type === 'init') throw new Error('Cannot delete the init operation');
+    c.operations = c.operations!.filter(o => o.id !== operationId);
+  });
   return delay(undefined);
 }
 

@@ -19,6 +19,20 @@ export interface Factory {
   created_at: string;
 }
 
+export type OperationType = 'init' | 'expansion';
+
+// Init uses all 6 phases; Expansion omits 'platform'
+export const INIT_PHASES: PhaseKey[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
+export const EXPANSION_PHASES: PhaseKey[] = ['purchase', 'movein', 'infra', 'cluster', 'release'];
+
+export interface ClusterOperation {
+  id: string;
+  type: OperationType;
+  label?: string;
+  phases: ClusterPhase[];
+  created_at: string;
+}
+
 export interface Cluster {
   id: string;
   name: string;
@@ -29,7 +43,8 @@ export interface Cluster {
   status?: ClusterStatus;
   created_at: string;
   serverCount?: number;
-  phases?: ClusterPhase[];
+  operations?: ClusterOperation[];  // NEW — primary data
+  phases?: ClusterPhase[];          // DEPRECATED — migration source only
 }
 
 export interface DashboardSummary {

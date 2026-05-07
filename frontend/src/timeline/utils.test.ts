@@ -123,11 +123,11 @@ describe('date-derived schedule helpers', () => {
     if (!boundaryCluster) {
       throw new Error('Expected boundary seed cluster c4 to exist');
     }
-    if (!boundaryCluster.phases) {
+    if (!boundaryCluster.operations?.[0]?.phases) {
       throw new Error('Expected boundary seed cluster c4 to include phases');
     }
 
-    const boundaryPhase = boundaryCluster.phases.find((phase) => phase.phase === 'purchase');
+    const boundaryPhase = boundaryCluster.operations[0].phases.find((phase) => phase.phase === 'purchase');
     if (!boundaryPhase) {
       throw new Error('Expected boundary seed cluster c4 to include a PO phase');
     }

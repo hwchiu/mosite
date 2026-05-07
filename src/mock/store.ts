@@ -1,8 +1,9 @@
-import type { Factory, Cluster, ClusterPhase, ClusterOperation, OperationType, DashboardSummary, ClusterStatus, PhaseStatus } from '../types';
+import type { Factory, Cluster, ClusterPhase, ClusterOperation, OperationType, DashboardSummary, ClusterStatus, PhaseStatus, RescheduleNote } from '../types';
 import { deriveClusterStatus, isoWeekToDate, validatePhaseDates } from '../timeline/utils';
 import { SEED_FACTORIES, SEED_CLUSTERS } from './seed';
 
-const LS_KEY = 'mosite_mock_db_v6';
+const LS_KEY = 'mosite_mock_db_v7';
+const LEGACY_LS_KEY_V6 = 'mosite_mock_db_v6';
 const LEGACY_LS_KEY_V5 = 'mosite_mock_db_v5';
 const LEGACY_LS_KEY_V4 = 'mosite_mock_db_v4';
 const PHASE_ORDER: ClusterStatus[] = ['purchase', 'movein', 'infra', 'cluster', 'platform', 'release'];
@@ -32,6 +33,15 @@ type V5Cluster = Omit<Cluster, 'operations'> & { phases?: ClusterPhase[] };
 interface V5MockDB {
   factories: Factory[];
   clusters: V5Cluster[];
+}
+
+// v6 operations may not have reschedule_notes field
+type V6Cluster = Omit<Cluster, 'operations'> & {
+  operations?: Array<Omit<ClusterOperation, 'reschedule_notes'> & { reschedule_notes?: RescheduleNote[] }>;
+};
+interface V6MockDB {
+  factories: Factory[];
+  clusters: V6Cluster[];
 }
 
 function comparePhasesBySchedule(a: ClusterPhase, b: ClusterPhase): number {
@@ -270,6 +280,26 @@ function migrateV5DB(): MockDB | null {
   return migrated;
 }
 
+function migrateV6DB(): MockDB | null {
+  const v6 = parsePersistedDB<V6MockDB>(localStorage.getItem(LEGACY_LS_KEY_V6));
+  if (!v6) return null;
+
+  const migrated: MockDB = {
+    factories: v6.factories,
+    clusters: v6.clusters.map((c): Cluster => ({
+      ...c,
+      operations: (c.operations ?? []).map(op => ({
+        ...op,
+        reschedule_notes: op.reschedule_notes ?? [],
+      })),
+    })),
+  };
+
+  saveDB(migrated);
+  localStorage.removeItem(LEGACY_LS_KEY_V6);
+  return migrated;
+}
+
 function migrateLegacyDB(): MockDB | null {
   const legacy = parsePersistedDB<LegacyMockDB>(localStorage.getItem(LEGACY_LS_KEY_V4));
   if (!legacy) return null;
@@ -312,6 +342,9 @@ function assertValidPhaseOrdering(phases: ClusterPhase[] | undefined): void {
 function loadDB(): MockDB {
   const current = parsePersistedDB<MockDB>(localStorage.getItem(LS_KEY));
   if (current) return current;
+
+  const migratedV6 = migrateV6DB();
+  if (migratedV6) return migratedV6;
 
   const migratedV5 = migrateV5DB();
   if (migratedV5) return migratedV5;
@@ -524,6 +557,68 @@ export async function db_deleteOperation(clusterId: string, operationId: string)
     if (!op) throw new Error('Operation not found');
     if (op.type === 'init') throw new Error('Cannot delete the init operation');
     c.operations = c.operations!.filter(o => o.id !== operationId);
+  });
+  return delay(undefined);
+}
+
+// ── Reschedule Notes ─────────────────────────────────────────────────────────
+
+export async function db_addRescheduleNote(
+  clusterId: string,
+  operationId: string,
+  noteText: string,
+): Promise<RescheduleNote> {
+  if (!noteText.trim()) throw new Error('note is required');
+  let entry: RescheduleNote | undefined;
+  mutate(d => {
+    const c = d.clusters.find(x => x.id === clusterId);
+    if (!c) throw new Error('Cluster not found');
+    const op = c.operations?.find(o => o.id === operationId);
+    if (!op) throw new Error('Operation not found');
+    entry = {
+      id: uuid(),
+      date: new Date().toISOString().slice(0, 10),
+      note: noteText.trim(),
+    };
+    op.reschedule_notes = [...(op.reschedule_notes ?? []), entry];
+  });
+  return delay(entry!);
+}
+
+export async function db_updateRescheduleNote(
+  clusterId: string,
+  operationId: string,
+  noteId: string,
+  noteText: string,
+): Promise<RescheduleNote> {
+  if (!noteText.trim()) throw new Error('note is required');
+  let updated: RescheduleNote | undefined;
+  mutate(d => {
+    const c = d.clusters.find(x => x.id === clusterId);
+    if (!c) throw new Error('Cluster not found');
+    const op = c.operations?.find(o => o.id === operationId);
+    if (!op) throw new Error('Operation not found');
+    const idx = (op.reschedule_notes ?? []).findIndex(n => n.id === noteId);
+    if (idx < 0) throw new Error('Note not found');
+    updated = { ...op.reschedule_notes![idx], note: noteText.trim() };
+    op.reschedule_notes = op.reschedule_notes!.map((n, i) => i === idx ? updated! : n);
+  });
+  return delay(updated!);
+}
+
+export async function db_deleteRescheduleNote(
+  clusterId: string,
+  operationId: string,
+  noteId: string,
+): Promise<void> {
+  mutate(d => {
+    const c = d.clusters.find(x => x.id === clusterId);
+    if (!c) throw new Error('Cluster not found');
+    const op = c.operations?.find(o => o.id === operationId);
+    if (!op) throw new Error('Operation not found');
+    const noteExists = (op.reschedule_notes ?? []).some(n => n.id === noteId);
+    if (!noteExists) throw new Error('Note not found');
+    op.reschedule_notes = (op.reschedule_notes ?? []).filter(n => n.id !== noteId);
   });
   return delay(undefined);
 }

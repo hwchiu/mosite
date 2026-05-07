@@ -18,7 +18,7 @@ function persistLegacyDB(db: {
 }
 
 function overwritePersistedClusterStatus(id: string, status: 'purchase' | 'movein' | 'infra' | 'cluster' | 'platform') {
-  const raw = localStorage.getItem('mosite_mock_db_v6');
+  const raw = localStorage.getItem('mosite_mock_db_v7');
   if (!raw) {
     throw new Error('mock db missing');
   }
@@ -33,7 +33,7 @@ function overwritePersistedClusterStatus(id: string, status: 'purchase' | 'movei
   }
 
   cluster.status = status;
-  localStorage.setItem('mosite_mock_db_v6', JSON.stringify(db));
+  localStorage.setItem('mosite_mock_db_v7', JSON.stringify(db));
 }
 
 describe('mock store derived schedule', () => {
@@ -121,8 +121,8 @@ describe('mock store derived schedule', () => {
         },
       ],
     });
-    expect(localStorage.getItem('mosite_mock_db_v6')).toContain('legacy-c1');
-    expect(localStorage.getItem('mosite_mock_db_v6')).not.toContain('completionWeek');
+    expect(localStorage.getItem('mosite_mock_db_v7')).toContain('legacy-c1');
+    expect(localStorage.getItem('mosite_mock_db_v7')).not.toContain('completionWeek');
     expect(localStorage.getItem('mosite_mock_db_v4')).toBeNull();
   });
 
@@ -368,7 +368,7 @@ describe('v5 → v6 migration: phases → operations', () => {
     expect(cluster.operations![0].type).toBe('init');
     expect(cluster.operations![0].phases).toHaveLength(6);
     expect(cluster.phases).toBeUndefined();
-    expect(localStorage.getItem('mosite_mock_db_v6')).toContain('c1');
+    expect(localStorage.getItem('mosite_mock_db_v7')).toContain('c1');
     expect(localStorage.getItem('mosite_mock_db_v5')).toBeNull();
   });
 
@@ -523,5 +523,55 @@ describe('operation CRUD', () => {
     await expect(
       db_deleteOperation('c1', initOp.id),
     ).rejects.toThrow('Cannot delete the init operation');
+  });
+});
+
+describe('reschedule note CRUD', () => {
+  let clusterId: string;
+  let opId: string;
+
+  beforeEach(async () => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-06T00:00:00Z'));
+    const store = await importFreshStore();
+    store.resetDB();
+    await vi.advanceTimersByTimeAsync(200);
+    const clusters = await resolveAfterDelay(store.db_listClusters());
+    const cluster = clusters.find(c => c.operations && c.operations.length > 0)!;
+    clusterId = cluster.id;
+    opId = cluster.operations![0].id;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it('adds a note with today date', async () => {
+    const store = await importFreshStore();
+    const note = await resolveAfterDelay(store.db_addRescheduleNote(clusterId, opId, 'Shipment delayed'));
+    expect(note.id).toBeTruthy();
+    expect(note.date).toBe('2026-05-06'); // fixed test date from test-setup.ts
+    expect(note.note).toBe('Shipment delayed');
+  });
+
+  it('updates an existing note text', async () => {
+    const store = await importFreshStore();
+    const created = await resolveAfterDelay(store.db_addRescheduleNote(clusterId, opId, 'Original'));
+    const updated = await resolveAfterDelay(store.db_updateRescheduleNote(clusterId, opId, created.id, 'Updated reason'));
+    expect(updated.note).toBe('Updated reason');
+    expect(updated.id).toBe(created.id);
+  });
+
+  it('deletes a note by id', async () => {
+    const store = await importFreshStore();
+    const created = await resolveAfterDelay(store.db_addRescheduleNote(clusterId, opId, 'To be deleted'));
+    await resolveAfterDelay(store.db_deleteRescheduleNote(clusterId, opId, created.id));
+    const clusters = await resolveAfterDelay(store.db_listClusters());
+    const cluster = clusters.find(c => c.id === clusterId)!;
+    const op = cluster.operations!.find(o => o.id === opId)!;
+    expect((op.reschedule_notes ?? []).find(n => n.id === created.id)).toBeUndefined();
   });
 });

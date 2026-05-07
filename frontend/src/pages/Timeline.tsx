@@ -299,7 +299,7 @@ export default function Timeline() {
                 mode={mode}
                 nowColumn={nowColumn}
                 defaultExpanded={true}
-                onEdit={(cluster, _opId) => setEditingCluster(cluster)}
+                onEdit={(cluster) => setEditingCluster(cluster)}
               />
             ))}
           </div>

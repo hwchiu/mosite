@@ -228,12 +228,7 @@ function migrateLegacyPhase(phase: LegacyClusterPhase): ClusterPhase {
   };
 }
 
-function migrateLegacyCluster(cluster: LegacyCluster): Cluster {
-  return {
-    ...cluster,
-    phases: cluster.phases?.map(migrateLegacyPhase),
-  };
-}
+
 
 function migrateV5DB(): MockDB | null {
   const v5 = parsePersistedDB<V5MockDB>(localStorage.getItem(LEGACY_LS_KEY_V5));

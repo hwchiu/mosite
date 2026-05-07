@@ -4,7 +4,7 @@ import { Plus, Edit2, Trash2, X, FilterX, ChevronRight, ChevronDown } from 'luci
 import LoadingSpinner from '../components/LoadingSpinner';
 import { listClusters, createCluster, updateCluster, deleteCluster, addOperation, updateOperation, deleteOperation } from '../api/clusters';
 import { listFactories } from '../api/factories';
-import { PHASE_ORDER, validatePhaseDates } from '../timeline/utils';
+import { validatePhaseDates } from '../timeline/utils';
 import type { ClusterType, ClusterStatus, Cluster, ClusterPhase, PhaseKey, ClusterOperation, OperationType } from '../types';
 import { INIT_PHASES, EXPANSION_PHASES } from '../types';
 
@@ -235,7 +235,7 @@ export default function Clusters() {
   const factories = factoriesQ.data ?? [];
 
   const filteredClusters = useMemo(() => {
-    return clusters
+    return (clustersQ.data ?? [])
       .sort((a, b) => (a.factory_name ?? '').localeCompare(b.factory_name ?? ''))
       .filter((c) => {
         if (filters.factory && !(c.factory_name ?? '').toLowerCase().includes(filters.factory.toLowerCase())) return false;
@@ -244,7 +244,7 @@ export default function Clusters() {
         if (filters.status && c.status !== filters.status) return false;
         return true;
       });
-  }, [clusters, filters]);
+  }, [clustersQ.data, filters]);
 
   const hasFilter = Object.values(filters).some(Boolean);
 
@@ -473,7 +473,11 @@ export default function Clusters() {
                             title="Toggle operations"
                             onClick={() => setExpandedRows(prev => {
                               const next = new Set(prev);
-                              next.has(cluster.id) ? next.delete(cluster.id) : next.add(cluster.id);
+                              if (next.has(cluster.id)) {
+                                next.delete(cluster.id);
+                              } else {
+                                next.add(cluster.id);
+                              }
                               return next;
                             })}
                             className="text-gray-400 hover:text-indigo-600"

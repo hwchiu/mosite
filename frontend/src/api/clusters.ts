@@ -2,7 +2,6 @@ import type { Cluster, ClusterPhase, ClusterType, OperationType } from '../types
 import {
   db_listClusters, db_createCluster, db_getCluster, db_updateCluster, db_deleteCluster,
   db_addOperation, db_updateOperation, db_deleteOperation,
-  type AddOperationData,
 } from '../mock/store';
 
 export interface ClusterListParams {

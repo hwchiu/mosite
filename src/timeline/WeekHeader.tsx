@@ -26,7 +26,7 @@ export default function WeekHeader({ columns, nowColumn }: Props) {
             style={isNow ? NOW_BORDER_STYLE : undefined}
           >
             {isNow ? (
-              <span className="inline-block bg-indigo-500 text-white rounded-full px-1.5 py-px text-[8px] font-bold leading-tight">
+              <span className="inline-block bg-indigo-600 text-white rounded-full px-1.5 py-px text-[10px] font-black tracking-wide leading-tight">
                 TODAY
               </span>
             ) : (

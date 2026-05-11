@@ -34,8 +34,8 @@ interface CapacityRow {
   site: string;            // e.g. "F12" — identity key, read-only in table
   type: 'VM' | 'K8S';     // identity key, read-only in table
   serverTotal: number;
-  podAvailability: number;
-  podProvisioned: number;
+  pod_vmAvailability: number;
+  pod_vmProvisioned: number;
   utilizationPct: number;  // drives the gauge needle
   serverUtilPct: number;
   capacityPlanPct: number;

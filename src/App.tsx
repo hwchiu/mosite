@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Clusters from './pages/Clusters';
 import Timeline from './pages/Timeline';
+import Capacity from './pages/Capacity';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/clusters" element={<Clusters />} />
             <Route path="/timeline" element={<Timeline />} />
+            <Route path="/capacity" element={<Capacity />} />
           </Route>
         </Routes>
       </BrowserRouter>

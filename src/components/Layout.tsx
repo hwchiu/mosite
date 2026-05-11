@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Network, CalendarDays, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Network, CalendarDays, BarChart2, Menu, X } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/clusters', label: 'Clusters', icon: Network, end: false },
   { to: '/timeline', label: 'Timeline', icon: CalendarDays, end: false },
+  { to: '/capacity', label: 'Capacity', icon: BarChart2, end: false },
 ];
 
 export default function Layout() {

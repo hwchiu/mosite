@@ -177,6 +177,7 @@ export default function Capacity() {
             <button
               key={value}
               onClick={() => setTypeFilter(value)}
+              aria-pressed={typeFilter === value}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 typeFilter === value
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -225,7 +226,7 @@ export default function Capacity() {
                         <span className="font-medium text-gray-700">{String(row[col.key])}</span>
                       ) : (
                         <input
-                          type="number"
+                          type="text"
                           value={String(row[col.key])}
                           onChange={e => updateCell(idx, col.key, e.target.value)}
                           className="w-24 px-1.5 py-0.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"

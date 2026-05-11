@@ -37,7 +37,9 @@ export default function Capacity() {
   const [rows, setRows] = useState<CapacityRow[]>(loadData);
 
   useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(rows));
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(rows));
+    } catch { /* silently fail if localStorage is unavailable */ }
   }, [rows]);
 
   // setRows will be used in Task 3 — kept to avoid re-adding it later

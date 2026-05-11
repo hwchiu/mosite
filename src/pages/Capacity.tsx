@@ -149,6 +149,7 @@ const TABLE_COLS: { key: keyof CapacityRow; label: string; readOnly?: boolean }[
 export default function Capacity() {
   const [rows, setRows] = useState<CapacityRow[]>(loadData);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     try {
@@ -158,13 +159,25 @@ export default function Capacity() {
 
   const visibleRows = typeFilter === 'all' ? rows : rows.filter(r => r.type === typeFilter);
 
-  function updateCell(idx: number, key: keyof CapacityRow, value: string) {
-    const numVal = parseFloat(value);
+  function handleCellChange(idx: number, key: keyof CapacityRow, raw: string) {
+    setDraftValues(prev => ({ ...prev, [`${idx}-${key}`]: raw }));
+  }
+
+  function handleCellBlur(idx: number, key: keyof CapacityRow) {
+    const draftKey = `${idx}-${key}`;
+    const raw = draftValues[draftKey];
+    if (raw === undefined) return;
+    const numVal = parseFloat(raw);
     setRows(prev =>
       prev.map((row, i) =>
         i !== idx ? row : { ...row, [key]: isNaN(numVal) ? 0 : numVal }
       )
     );
+    setDraftValues(prev => {
+      const next = { ...prev };
+      delete next[draftKey];
+      return next;
+    });
   }
 
   return (
@@ -227,8 +240,9 @@ export default function Capacity() {
                       ) : (
                         <input
                           type="text"
-                          value={String(row[col.key])}
-                          onChange={e => updateCell(idx, col.key, e.target.value)}
+                          value={draftValues[`${idx}-${col.key}`] ?? String(row[col.key])}
+                          onChange={e => handleCellChange(idx, col.key, e.target.value)}
+                          onBlur={() => handleCellBlur(idx, col.key)}
                           className="w-24 px-1.5 py-0.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
                         />
                       )}

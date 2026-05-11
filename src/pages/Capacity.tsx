@@ -125,22 +125,120 @@ export function GaugeChart({ row }: { row: CapacityRow }) {
   );
 }
 
+// ── Type filter & table columns ──────────────────────────────────────────────
+type TypeFilter = 'VM' | 'K8S' | 'all';
+
+const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
+  { value: 'all', label: 'K8S & VM' },
+  { value: 'K8S', label: 'K8S' },
+  { value: 'VM',  label: 'VM'  },
+];
+
+const TABLE_COLS: { key: keyof CapacityRow; label: string; readOnly?: boolean }[] = [
+  { key: 'site',               label: 'Site',            readOnly: true },
+  { key: 'type',               label: 'Type',            readOnly: true },
+  { key: 'serverTotal',        label: 'Server Total'                    },
+  { key: 'pod_vmAvailability', label: 'Pod M-VM Avail.'                },
+  { key: 'pod_vmProvisioned',  label: 'Pod M-VM Prov.'                 },
+  { key: 'utilizationPct',     label: 'Util %'                         },
+  { key: 'serverUtilPct',      label: 'Server Util %'                  },
+  { key: 'capacityPlanPct',    label: 'Capacity Plan %'                },
+  { key: 'serverRequire',      label: 'Server Require'                 },
+];
+
 export default function Capacity() {
   const [rows, setRows] = useState<CapacityRow[]>(loadData);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(rows));
-    } catch { /* silently fail if localStorage is unavailable */ }
+    } catch { /* ignore write errors */ }
   }, [rows]);
 
-  // setRows will be used in Task 3 — kept to avoid re-adding it later
-  void setRows;
+  const visibleRows = typeFilter === 'all' ? rows : rows.filter(r => r.type === typeFilter);
+
+  function updateCell(idx: number, key: keyof CapacityRow, value: string) {
+    const numVal = parseFloat(value);
+    setRows(prev =>
+      prev.map((row, i) =>
+        i !== idx ? row : { ...row, [key]: isNaN(numVal) ? 0 : numVal }
+      )
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Capacity</h1>
-      <p className="text-gray-500">Loaded {rows.length} rows.</p>
+      {/* Header + type toggle */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Capacity</h1>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mt-2 w-fit">
+          {TYPE_FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setTypeFilter(value)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                typeFilter === value
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Gauge grid — filtered by type toggle */}
+      <div className="grid grid-cols-4 gap-4">
+        {visibleRows.map(row => (
+          <GaugeChart key={`${row.site}-${row.type}`} row={row} />
+        ))}
+      </div>
+
+      {/* Editable data table — always shows all 8 rows */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">Capacity Data</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {TABLE_COLS.map(col => (
+                  <th
+                    key={col.key}
+                    className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap"
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr
+                  key={`${row.site}-${row.type}`}
+                  className="border-b border-gray-100 hover:bg-gray-50"
+                >
+                  {TABLE_COLS.map(col => (
+                    <td key={col.key} className="px-3 py-2">
+                      {col.readOnly ? (
+                        <span className="font-medium text-gray-700">{String(row[col.key])}</span>
+                      ) : (
+                        <input
+                          type="number"
+                          value={String(row[col.key])}
+                          onChange={e => updateCell(idx, col.key, e.target.value)}
+                          className="w-24 px-1.5 py-0.5 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
+                        />
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

@@ -54,7 +54,7 @@ const GAUGE_SEGMENTS = [
 const GAUGE_TICKS = [0, 20, 40, 60, 80, 100];
 
 export function GaugeChart({ row }: { row: CapacityRow }) {
-  const pct = Math.min(100, Math.max(0, row.utilizationPct));
+  const pct = Math.min(100, Math.max(0, row.serverUtilPct));
   const needleAngle = -90 + (pct / 100) * 180;
 
   return (
